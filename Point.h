@@ -9,23 +9,20 @@
 
 namespace Thesis {
 
-    template<typename T, int dim>
     class Point {
     public:
-        Point(std::vector<T> elements);
+        Point(std::vector<double> elements);
 
-        T& operator[] (int const i);
-        T const& operator[](int const i) const;
+        double& operator[] (int const i);
+        double const& operator[](int const i) const;
+        std::string to_string();
 
-        void operator+=(Point const& that);
-        void operator-=(Point const& that);
+        static double EuclideanDistance(Point a, Point b);
 
-        friend Point operator+(Point const& a, Point const& b);
-        friend Point operator-(Point const& a, Point const& b);
-
-        static double EuclideanDistance(Point p1, Point p2);
     private:
-        std::vector<T> elements;
+        std::vector<double> elements;
+
+        static void check_size(Point const& a, Point const& b, std::string msg);
     };
 }
 

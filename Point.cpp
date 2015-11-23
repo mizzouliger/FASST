@@ -2,45 +2,50 @@
 // Created by Seth Wiesman on 11/22/15.
 //
 
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <string>
 #include "Point.h"
 
-using namespace std;
+using namespace Thesis;
 
-template<typename T, int dim>
-Thesis::Point::Point(vector<T> elements): elements(elements) {}
+Point::Point(std::vector<double> elements): elements(elements) {}
 
-template<typename T, int dim>
-T & Thesis::Point::operator[](int const i) {
+double& Thesis::Point::operator[](int const i) {
     return this->elements[i];
 }
 
-template<typename T, int dim>
-T const& Thesis::Point::operator[](int const i) const {
+double const& Thesis::Point::operator[](int const i) const {
     return this->elements[i];
 }
 
-template<typename T, int dim>
-void Thesis::Point::operator+=(Point const& that) {
-    for (int i = 0; i < dim; i++) {
-        this->elements[i] += that.elements[i];
-    }
-};
+std::string Thesis::Point::to_string() {
+    std::string elems;
+    for (auto i = 0; i < this->elements.size(); i++) {
+        elems += std::to_string(this->elements[i]);
 
-template<typename T, int dim>
-void Thesis::Point::operator-=(Point const& that) {
-    for (int i = 0; i < dim; i++) {
-        this->elements[i] -= that.elements[i];
+        if (i + 1 != this->elements.size()) {
+            elems += ",";
+        }
     }
-};
 
-friend Point Thesis::Point::operator+(Point const& a, Point const& b) {
-    Point ret(a);
-    ret += a;
-    return ret;
+    return "(" + elems + ")";
 }
 
-friend Point Thesis::Point::operator-(Point const& a, Point const& b) {
-    Point ret(a);
-    ret -= a;
-    return ret;
+double Thesis::Point::EuclideanDistance(Point a, Point b) {
+    check_size(a, b, "Euclidean distance calculation requires points of equal dimensionality");
+
+    return std::inner_product(a.elements.begin(), a.elements.end(),
+                              b.elements.begin(), double(0), std::plus<double>(),
+                              [](double x1, double x2) {
+                                    return (x2 - x1) * (x2 - x1);
+                              }
+    );
+}
+
+void Point::check_size(Point const& a, Point const& b, std::string msg) {
+    if (a.elements.size() != b.elements.size()) {
+        throw std::domain_error(msg);
+    }
 }
