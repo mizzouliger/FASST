@@ -5,44 +5,39 @@
 #ifndef THESIS_METRICTREE_H
 #define THESIS_METRICTREE_H
 
-#include <vector>
-#include <string>
 #include <functional>
-#include "Point.h"
+#include <vector>
+#include <queue>
 
-namespace Thesis {
+template<typename T> class MetricTree {
+public:
+    MetricTree(std::vector<T> points, std::function<double(const T&, const T&)> distance);
+    ~MetricTree();
 
-    class MetricTree {
-    public:
-        MetricTree(Point element);
-        MetricTree(Point element, MetricTree* left, MetricTree* right);
-        ~MetricTree();
-
-        int height(void);
-        int size(void);
-
-        void postorder(int);
-        std::string to_string(void);
-
-        std::vector<Point> searchRadius(Point search, double radius, std::function<double(Point, Point)> distance);
-
-        static MetricTree* BuildMetricTree(std::vector<Point> elements, std::function<double(Point, Point)> distance);
-    private:
-        Point element;
+    std::vector<T> search(const T& target, double radius);
+private:
+    struct Node {
+        T point;
 
         double innerRadius;
         double outerRadius;
 
-        MetricTree* left;
-        MetricTree* right;
+        Node *left;
+        Node *right;
 
-        std::string to_string(int depth);
+        Node(T point);
+        ~Node();
+    } *root;
 
-        static MetricTree* constructTree(std::vector<MetricTree*>::iterator first,
-                                         std::vector<MetricTree*>::iterator last,
-                                         std::function<double(Point, Point)> distance);
-    };
-}
+    std::function<double(const T&, const T&)> distance;
 
+
+    MetricTree<T>::Node* build_tree(std::vector<MetricTree<T>::Node *> points, unsigned long low, unsigned long high);
+    void search(MetricTree<T>::Node* root, std::vector<T>& result, const T& target, double radius);
+};
+
+#ifndef METRIC_TREE_CPP
+#include "MetricTree.cpp"
+#endif
 
 #endif //THESIS_METRICTREE_H

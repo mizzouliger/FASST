@@ -2,25 +2,28 @@
 // Created by Seth Wiesman on 11/22/15.
 //
 
-#include <algorithm>
-#include <functional>
 #include <numeric>
 #include <string>
-#include "Point.h"
+#include <cmath>
+#include <functional>
 
-using namespace Thesis;
+#include "Point.h"
 
 Point::Point(std::vector<double> elements): elements(elements) {}
 
-double& Thesis::Point::operator[](int const i) {
+double& Point::operator[](int const i) {
     return this->elements[i];
 }
 
-double const& Thesis::Point::operator[](int const i) const {
+double const& Point::operator[](int const i) const {
     return this->elements[i];
 }
 
-std::string Thesis::Point::to_string() {
+bool Point::operator==(Point const& that) const {
+    return std::equal(this->elements.begin(), this->elements.end(), that.elements.begin());
+}
+
+std::string Point::to_string() {
     std::string elems;
     for (auto i = 0; i < this->elements.size(); i++) {
         elems += std::to_string(this->elements[i]);
@@ -33,15 +36,15 @@ std::string Thesis::Point::to_string() {
     return "(" + elems + ")";
 }
 
-double Thesis::Point::EuclideanDistance(Point a, Point b) {
+double Point::euclidean_distance(Point a, Point b) {
     check_size(a, b, "Euclidean distance calculation requires points of equal dimensionality");
 
-    return std::inner_product(a.elements.begin(), a.elements.end(),
-                              b.elements.begin(), double(0), std::plus<double>(),
-                              [](double x1, double x2) {
-                                    return (x2 - x1) * (x2 - x1);
-                              }
-    );
+    double sum = 0.0;
+    for (auto i = 0; i < a.elements.size(); i++) {
+        sum += (a.elements[i] - b.elements[i]) * (a.elements[i] - b.elements[i]);
+    }
+
+    return sqrt(sum);
 }
 
 void Point::check_size(Point const& a, Point const& b, std::string msg) {

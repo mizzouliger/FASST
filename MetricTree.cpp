@@ -1,169 +1,100 @@
 //
 // Created by Seth Wiesman on 11/22/15.
 //
-#include <algorithm>
-#include <functional>
-#include <iostream>
-#include <iomanip>
+#define METRIC_TREE_CPP
 #include "MetricTree.h"
 
-using namespace Thesis;
+using namespace std;
 
-class MetricTreeWrapper {
-public:
-    MetricTree* operator()(Point point) {
-        return new MetricTree(point);
+template<typename T>
+MetricTree<T>::MetricTree(vector<T> points, function<double(const T&, const T&)> distance) {
+    vector<Node*> nodes;
+    nodes.reserve(points.size());
+
+    for (auto& point : points)  {
+        nodes.push_back(new Node(point));
     }
-};
 
-MetricTree::MetricTree(Point element) : MetricTree(element, nullptr, nullptr) { }
-
-MetricTree::MetricTree(Point element, MetricTree *left, MetricTree *right) : element(element),
-                                                                             left(left),
-                                                                             right(right) {
-    this->innerRadius = 0.0;
-    this->outerRadius = 0.0;
+    this->distance = distance;
+    this->root     = build_tree(nodes, 0, points.size());
 }
 
-int Thesis::MetricTree::height(void) {
-    int left  = this->left  == nullptr ? 0 : this->left->height();
-    int right = this->right == nullptr ? 0 : this->right->height();
-
-    return 1 + std::max(left, right);
+template<typename T>
+MetricTree<T>::~MetricTree() {
+    delete root;
 }
 
-int Thesis::MetricTree::size(void) {
-    int left  = this->left  == nullptr ? 0 : this->left->size();
-    int right = this->right == nullptr ? 0 : this->right->size();
-
-    return 1 + left + right;
-}
-
-void Thesis::MetricTree::postorder(int indent) {
-    if (this->right != nullptr) {
-        this->right->postorder(indent + 4);
-    }
-
-    if (indent) {
-        std::cout << std::setw(indent) << ' ';
-    }
-
-    if (this->right) {
-        std::cout << " /\n" << std::setw(indent) << ' ';
-    }
-
-    std::cout << this->element.to_string() << "\n ";
-
-    if (this->left != nullptr) {
-        std::cout << std::setw(indent) << ' ' << " \\\n";
-        this->left->postorder(indent + 4);
-    }
-}
-
-std::string Thesis::MetricTree::to_string(void) {
-    return this->to_string(0);
-}
-
-std::string Thesis::MetricTree::to_string(int depth) {
-    std::string padding = "";
-    for (int i = 0; i < depth; i++) {
-        padding += "\t";
-    }
-
-     std::string left = this->left == nullptr
-                       ? "\t" + padding + "nullptr"
-                       : this->left->to_string(depth + 1);
-
-    std::string right = this->right == nullptr
-                        ? "\t" + padding + "nullptr"
-                        : this->right->to_string(depth + 1);
-
-    return padding + "MetricTree(" + this->element.to_string() + ", "
-           + std::to_string(this->innerRadius) + ", "
-           + std::to_string(this->outerRadius) + "\n"
-           + left  + "\n"
-           + right + "\n"
-           + padding + ")";
-}
-
-MetricTree::~MetricTree() {
-    delete(this->left);
-    delete(this->right);
-}
-
-std::vector<Point> MetricTree::searchRadius(Point search, double radius, std::function<double(Point, Point)> distance) {
-    auto results = std::vector<Point>();
-
-    const auto distToNode = distance(search, this->element);
-
-    if (distToNode <= radius) {
-        results.push_back(this->element);
-    }
-
-    if (this->left != nullptr && distToNode + radius >= this->outerRadius) {
-        const auto leftResults = this->left->searchRadius(search, radius, distance);
-        results.insert(results.end(), leftResults.begin(), leftResults.end());
-    }
-
-    if (this->right != nullptr && distToNode - radius <= this->innerRadius) {
-        const auto rightResults = this->right->searchRadius(search, radius, distance);
-        results.insert(results.end(), rightResults.begin(), rightResults.end());
-    }
-
+template<typename T>
+vector<T> MetricTree<T>::search(const T& target, double radius) {
+    vector<T> results;
+    search(this->root, results, target, radius);
     return results;
 }
 
-MetricTree* MetricTree::constructTree(std::vector<MetricTree*>::iterator first,
-                                      std::vector<MetricTree*>::iterator last,
-                                      std::function<double(Point, Point)> distance) {
-    if (first > last) {
-        return nullptr;
+template<typename T>
+void MetricTree<T>::search(MetricTree<T>::Node* root, vector<T>& result, const T&target, double radius) {
+    if (root == nullptr) {
+        return;
     }
 
-    if (first == last) {
-        return *first;
+    const auto dist = this->distance(root->point, target);
+
+    if (dist <= radius) {
+        result.push_back(root->point);
     }
 
-    const long numElements = std::distance(first, last);
-
-    if (numElements == 1L) {
-        auto root = *first;
-        root->innerRadius = root->outerRadius = distance(root->element, (*last)->element);
-        root->left = (*last);
-        return root;
+    if (dist + radius >= root->outerRadius) {
+        search(root->right, result, target, radius);
     }
 
-    for (auto iter = first + 1; iter != last; iter++) {
-        (*iter)->innerRadius = distance((*first)->element, (*iter)->element);
+    if (dist - radius <= root->innerRadius) {
+        search(root->left, result, target, radius);
     }
-
-    const auto median = first + numElements / 2;
-
-    nth_element(first + 1, median, last, [](MetricTree* const a, MetricTree* const b) {
-        return a->innerRadius < b->innerRadius;
-    });
-
-    auto elemOnInnerRadius = max_element(first + 1, median, [](MetricTree* const a, MetricTree* const b) {
-       return a->innerRadius < b->innerRadius;
-    });
-
-    (*first)->innerRadius = (*elemOnInnerRadius)->innerRadius;
-
-    (*first)->left  = constructTree(first + 1, median - 1, distance);
-    (*first)->right = constructTree(median, last, distance);
-
-    return *first;
 }
 
-MetricTree* MetricTree::BuildMetricTree(std::vector<Point> elements, std::function<double(Point, Point)> distance) {
-    if (elements.empty()) {
+template<typename T>
+MetricTree<T>::Node::Node(T point): point(point), innerRadius(0), outerRadius(0), left(nullptr), right(nullptr) {}
+
+template<typename T>
+MetricTree<T>::Node::~Node() {
+    delete left;
+    delete right;
+}
+
+template<typename T>
+typename MetricTree<T>::Node* MetricTree<T>::build_tree(vector<Node *> points, unsigned long low, unsigned long high) {
+    if (high == low) {
         return nullptr;
     }
 
-    std::vector<MetricTree*> nodes;
-    nodes.reserve(elements.size());
+    if (high - low == 1) {
+        return points[low];
+    }
 
-    std::transform(elements.begin(), elements.end(), std::back_inserter(nodes), MetricTreeWrapper());
+    for (auto i = low + 1; i < high; i++) {
+        points[i]->innerRadius = this->distance(points[low]->point, points[i]->point);
+    }
 
-    return constructTree(nodes.begin(), nodes.end() - 1, distance);
+    const auto mid = (high + low) / 2;
+
+    const auto first  = points.begin() + low + 1;
+    const auto median = points.begin() + mid;
+    const auto last   = points.begin() + high;
+
+    nth_element(first, median, last, [](const Node* n1, const Node* n2){
+        return n1->innerRadius < n2->innerRadius;
+    });
+
+    points[low]->outerRadius = (*median)->innerRadius;
+
+    const auto pointOnInnerRadius = max_element(first, median, [](const Node* n1, const Node* n2){
+        return n1->innerRadius < n2->innerRadius;
+    });
+
+    points[low]->innerRadius = (*pointOnInnerRadius)->innerRadius;
+
+    points[low]->left  = build_tree(points, low + 1, mid);
+    points[low]->right = build_tree(points, mid, high);
+
+    return points[low];
 }

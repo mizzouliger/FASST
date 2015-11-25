@@ -1,40 +1,52 @@
 #include <iostream>
 #include <vector>
+#include <cmath>
 #include "Point.h"
 #include "MetricTree.h"
+#include "EnhancedMetricTree.h"
 
 using namespace std;
-using namespace Thesis;
 
-int main() {
-
+vector<Point> random_points(int num, int dim) {
     vector<Point> points;
-
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < num; i++) {
         vector<double> elements;
-        for (int j = 0; j < 2; j++) {
+        for (int j = 0; j < dim; j++) {
             elements.push_back(rand() % 100);
         }
 
         points.push_back(Point(elements));
     }
-    int numDistanceCalls = 0;
-    MetricTree* root = MetricTree::BuildMetricTree(points, [&numDistanceCalls](Point p1, Point p2) mutable {
-        numDistanceCalls++;
-        return Point::EuclideanDistance(p1, p2);
-    });
-    std::cout << root->size() << " " << root->height()  << " " << numDistanceCalls << endl;
 
-    Point origin = Point(vector<double>{0, 0});
+    return points;
+}
 
-    numDistanceCalls = 0;
-    auto found = root->searchRadius(origin, 2450, [&numDistanceCalls](Point p1, Point p2) mutable {
-        numDistanceCalls++;
-        return Point::EuclideanDistance(p1, p2);
-    });
+unsigned long calls = 0;
+double distance_calls(const Point& p1, const Point& p2) {
+    calls++;
+    return Point::euclidean_distance(p1, p2);
+}
 
-    cout << numDistanceCalls << endl;
+int main() {
+    const Point origin({0, 0});
 
-    delete(root);
+    for (auto i = 2; i < 8; i++) {
+        const auto size = static_cast<int>(pow(10, i));
+        auto points = random_points(size, 2);
+
+        cout << size;
+
+        MetricTree<Point>         metric_tree(points, distance_calls);
+        EnhancedMetricTree<Point> enhanced_metric_tree(points, distance_calls);
+
+
+        calls = 0;
+        auto results = metric_tree.search(origin, 50);
+        cout << " " << calls;
+
+        calls = 0;
+        auto res2    = enhanced_metric_tree.search(origin, 50);
+        cout << " " << calls << endl;
+    }
     return 0;
 }
