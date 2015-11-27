@@ -3,5 +3,5 @@ project(Thesis)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-set(SOURCE_FILES main.cpp Point.cpp Point.h MetricTree.cpp MetricTree.h EnhancedMetricTree.cpp EnhancedMetricTree.h MTree.h)
+set(SOURCE_FILES main.cpp Point.cpp Point.h MetricTree.h EnhancedMetricTree.h)
 add_executable(Thesis ${SOURCE_FILES})

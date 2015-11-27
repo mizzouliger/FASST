@@ -30,11 +30,9 @@ double distance_calls(const Point& p1, const Point& p2) {
 int main() {
     const Point origin({0, 0});
 
-    for (auto i = 2; i < 8; i++) {
+    for (auto i = 1; i < 2; i++) {
         const auto size = static_cast<int>(pow(10, i));
         auto points = random_points(size, 2);
-
-        cout << size;
 
         MetricTree<Point>         metric_tree(points, distance_calls);
         EnhancedMetricTree<Point> enhanced_metric_tree(points, distance_calls);
@@ -42,11 +40,17 @@ int main() {
 
         calls = 0;
         auto results = metric_tree.search(origin, 50);
-        cout << " " << calls;
+
+        for(auto& point : results) {
+            cout << point.to_string() << endl;
+        }
+
+        cout << calls << endl;
 
         calls = 0;
-        auto res2    = enhanced_metric_tree.search(origin, 50);
-        cout << " " << calls << endl;
+        auto nearest = metric_tree.nearest_neighbor(origin);
+
+        cout << endl << calls << endl << nearest.to_string() << endl;
     }
     return 0;
 }
