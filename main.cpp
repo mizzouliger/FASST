@@ -1,56 +1,110 @@
 #include <iostream>
-#include <vector>
-#include <cmath>
+#include <assert.h>
+#include <random>
+#include <fstream>
+#include <sstream>
+
 #include "Point.h"
 #include "MetricTree.h"
 #include "EnhancedMetricTree.h"
 
-using namespace std;
+int calls;
 
-vector<Point> random_points(int num, int dim) {
-    vector<Point> points;
-    for (int i = 0; i < num; i++) {
-        vector<double> elements;
-        for (int j = 0; j < dim; j++) {
-            elements.push_back(rand() % 100);
+double distance_function(const Point& p1,  const Point& p2) {
+    calls += 1;
+    return Point::euclidean_distance(p1, p2);
+}
+
+template<typename T>
+std::pair<unsigned long, int> benchmark(std::vector<Point> points, const double radius) {
+    static_assert(std::is_base_of<IMetricTree<Point, distance_function>, T>::value, "T must derive from IMetricTree");
+
+    std::unique_ptr<IMetricTree<Point, distance_function>> tree(new T(points));
+    calls = 0;
+    auto results = tree->search(Point({10, 10}), radius);
+    return std::make_pair(results.size(), calls);
+}
+
+std::vector<Point> read_points(std::string filename, std::size_t len) {
+    std::vector<Point> points;
+
+    std::ifstream file(filename);
+    std::string input;
+
+    for(std::size_t i = 0; i < len; i++) {
+        std::getline(file, input);
+        std::istringstream ss(input);
+
+        std::vector<double> elements;
+        std::string token;
+        while (getline(ss, token, ',')) {
+            elements.push_back(stod(token));
         }
 
         points.push_back(Point(elements));
     }
-
+    file.close();
     return points;
 }
 
-unsigned long calls = 0;
-double distance_calls(const Point& p1, const Point& p2) {
-    calls++;
-    return Point::euclidean_distance(p1, p2);
+void show_progress(double progress) {
+
+        int barWidth = 70;
+
+        std::cout << "[";
+        int pos = barWidth * progress;
+        for (int i = 0; i < barWidth; ++i) {
+            if (i < pos) std::cout << "=";
+            else if (i == pos) std::cout << ">";
+            else std::cout << " ";
+        }
+        std::cout << "] " << int(progress * 100.0) << " %\r";
+        std::cout.flush();
 }
 
-int main() {
-    const Point origin({0, 0});
-
-    for (auto i = 1; i < 2; i++) {
-        const auto size = static_cast<int>(pow(10, i));
-        auto points = random_points(size, 2);
-
-        MetricTree<Point>         metric_tree(points, distance_calls);
-        EnhancedMetricTree<Point> enhanced_metric_tree(points, distance_calls);
+int main(int argc, char* argv[]) {
+    std::vector<std::string> files = {
+            "/Users/sethwiesman/ClionProjects/Thesis/normal-2d.txt",
+            "/Users/sethwiesman/ClionProjects/Thesis/uniform-2d.txt"
+    };
 
 
-        calls = 0;
-        auto results = metric_tree.search(origin, 50);
+    //auto points = read_points(files[0], 10);
 
-        for(auto& point : results) {
-            cout << point.to_string() << endl;
+    //EnhancedMetricTree<Point, distance_function> tree(points);
+    //tree.print();
+
+    for (auto file : files) {
+        std::vector<int> metric_calls;
+        std::vector<int> enhanced_calls;
+
+        std::cout << file << std::endl;
+        for (std::size_t i = 1000; i < 100000; i += 1000) {
+            show_progress(i / 100000.0);
+
+            auto points = read_points(file, i);
+
+            auto radius = 15.0;
+
+            auto metric_bench   = benchmark<MetricTree<Point, distance_function>>(points, radius);
+            auto enhanced_bench = benchmark<EnhancedMetricTree<Point, distance_function>>(points, radius);
+
+            metric_calls.push_back(std::get<1>(metric_bench));
+            enhanced_calls.push_back(std::get<1>(enhanced_bench));
+
+            assert(std::get<0>(metric_bench) == std::get<0>(enhanced_bench));
+            std::cout << std::get<1>(metric_bench) << " " << std::get<1>(enhanced_bench) << std::endl;
         }
 
-        cout << calls << endl;
-
-        calls = 0;
-        auto nearest = metric_tree.nearest_neighbor(origin);
-
-        cout << endl << calls << endl << nearest.to_string() << endl;
+        /*std::reverse(metric_calls.begin(), metric_calls.end());
+        std::reverse(enhanced_calls.begin(), enhanced_calls.end());
+        std::ofstream out(file + ".out.txt");
+        auto num = 1000;
+        for (auto i = 0; i < metric_calls.size(); i++) {
+            out << num << " " << metric_calls[i] << " " << enhanced_calls[i] << std::endl;
+            num += 1000;
+        }
+        out.close();*/
     }
     return 0;
 }

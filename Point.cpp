@@ -23,7 +23,11 @@ bool Point::operator==(Point const& that) const {
     return std::equal(this->elements.begin(), this->elements.end(), that.elements.begin());
 }
 
-std::string Point::to_string() {
+unsigned long Point::size() const {
+    return elements.size();
+}
+
+std::string Point::to_string() const {
     std::string elems;
     for (auto i = 0; i < this->elements.size(); i++) {
         elems += std::to_string(this->elements[i]);
