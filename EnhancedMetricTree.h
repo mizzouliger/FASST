@@ -29,7 +29,8 @@ public:
             nodes.push_back(std::make_shared<Node>(point));
         }
 
-        this->root = build_tree(nodes, 0, points.size());
+        std::vector<T> predecessors;
+        this->root = build_tree(predecessors, nodes, 0, points.size());
     }
 
     std::vector<T> search(const T &target, double radius) const {
@@ -98,9 +99,9 @@ public:
         return nearest_point;
     }
 
-    void print(void) {
+    /*void print(void) {
         Node::prettyprint(this->root);
-    }
+    }*/
 
 private:
     struct Node {
@@ -170,18 +171,17 @@ private:
         }
     };
 
-    std::shared_ptr<Node> build_tree(std::vector<std::shared_ptr<Node>> points, std::size_t low, std::size_t high) {
-        if (high == low) {
+    std::shared_ptr<Node> build_tree(std::vector<T> &predecessors, std::vector<std::shared_ptr<Node>> points, std::size_t low, std::size_t high) {
+        if (low == high) {
             return nullptr;
         }
 
-        if (high - low == 1) {
+        if ((high - low) == 1) {
             return points[low];
         }
 
         for (auto i = low + 1; i < high; i++) {
             points[i]->innerRadius = distance(points[low]->point, points[i]->point);
-            points[i]->predecessors.push_back(points[i]->innerRadius);
         }
 
         const auto mid = (high + low) / 2;
@@ -202,8 +202,25 @@ private:
 
         points[low]->innerRadius = (*pointOnInnerRadius)->innerRadius;
 
-        points[low]->left  = build_tree(points, low + 1, mid);
-        points[low]->right = build_tree(points, mid,     high);
+        for (auto& point : predecessors) {
+            auto min_dist  = distance(points[low]->point, point);
+
+            for (auto i = low + 1; i < high; i++) {
+                auto new_dist = distance(point, points[i]->point);
+                if (new_dist < min_dist) {
+                    min_dist  = new_dist;
+                }
+            }
+
+            points[low]->predecessors.push_back(min_dist);
+        }
+
+        predecessors.push_back(points[low]->point);
+
+        points[low]->left  = build_tree(predecessors, points, low + 1, mid);
+        points[low]->right = build_tree(predecessors, points, mid,     high);
+
+        predecessors.pop_back();
 
         if (points[low]->left != nullptr) {
             points[low]->left->parent = points[low];
@@ -216,25 +233,28 @@ private:
         return points[low];
     }
 
-    void search(std::shared_ptr<Node> node, std::vector<T> &result, const T &target, double radius, std::vector<double> predecessors) const {
+    void search(std::shared_ptr<Node> node, std::vector<T> &result, const T &target, double radius, std::vector<double>& predecessors) const {
         if (node == nullptr) {
             return;
         }
 
         const auto dist = distance(node->point, target);
 
-        if (node->triangle_prune(dist, predecessors)) {
-            return;
-        }
-
         if (dist <= radius) {
             result.push_back(node->point);
+        } else if (node->triangle_prune(dist, predecessors)) {
+            return;
         }
 
         predecessors.push_back(dist);
 
-        search(node->right, result, target, radius, predecessors);
-        search(node->left, result, target, radius, predecessors);
+        if (dist - radius <= node->innerRadius) {
+            search(node->left, result, target, radius, predecessors);
+        }
+
+        if (dist + radius >= node->outerRadius) {
+            search(node->right, result, target, radius, predecessors);
+        }
 
         predecessors.pop_back();
     }

@@ -18,7 +18,7 @@ public:
     std::string to_string() const;
 
     unsigned long size() const;
-    static double euclidean_distance(Point a, Point b);
+    static double euclidean_distance(const Point& a, const Point& b);
 
 private:
     std::vector<double> elements;

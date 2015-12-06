@@ -140,23 +140,23 @@ private:
         return points[low];
     }
 
-    void search(std::shared_ptr<Node> root, std::vector<T>& result, const T& target, double radius) const {
-        if (root == nullptr) {
+    void search(std::shared_ptr<Node> node, std::vector<T>& result, const T& target, double radius) const {
+        if (node == nullptr) {
             return;
         }
 
-        const auto dist = distance(root->point, target);
+        const auto dist = distance(node->point, target);
 
         if (dist <= radius) {
-            result.push_back(root->point);
+            result.push_back(node->point);
         }
 
-        if (dist + radius >= root->outerRadius) {
-            search(root->right, result, target, radius);
+        if (dist - radius <= node->innerRadius) {
+            search(node->left, result, target, radius);
         }
 
-        if (dist - radius <= root->innerRadius) {
-            search(root->left, result, target, radius);
+        if (dist + radius >= node->outerRadius) {
+            search(node->right, result, target, radius);
         }
     }
 };

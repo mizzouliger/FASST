@@ -40,7 +40,7 @@ std::string Point::to_string() const {
     return "(" + elems + ")";
 }
 
-double Point::euclidean_distance(Point a, Point b) {
+double Point::euclidean_distance(const Point& a, const Point& b) {
     check_size(a, b, "Euclidean distance calculation requires points of equal dimensionality");
 
     double sum = 0.0;
