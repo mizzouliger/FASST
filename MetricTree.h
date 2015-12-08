@@ -24,8 +24,13 @@ public:
         this->root = build_tree(nodes, 0, points.size());
     }
 
+    int getCalls() const {
+        return this->calls;
+    }
+
     std::vector<T> search(const T& target, double radius) const {
         std::vector<T> results;
+        this->calls = 0;
         search(root, results, target, radius);
         return results;
     }
@@ -83,6 +88,7 @@ public:
     }
 
 private:
+    mutable int calls;
     struct Node {
         T point;
 
@@ -146,6 +152,7 @@ private:
         }
 
         const auto dist = distance(node->point, target);
+        calls++;
 
         if (dist <= radius) {
             result.push_back(node->point);

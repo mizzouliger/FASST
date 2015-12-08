@@ -9,10 +9,8 @@
 #include "MetricTree.h"
 #include "EnhancedMetricTree.h"
 
-int calls;
 
 double distance_function(const Point& p1,  const Point& p2) {
-    calls += 1;
     return Point::euclidean_distance(p1, p2);
 }
 
@@ -21,14 +19,13 @@ std::pair<unsigned long, int> benchmark(std::vector<Point> points, const double 
     static_assert(std::is_base_of<IMetricTree<Point, distance_function>, T>::value, "T must derive from IMetricTree");
 
     std::unique_ptr<IMetricTree<Point, distance_function>> tree(new T(points));
-    calls = 0;
     auto results = tree->search(Point({0, 0}), radius);
 
     for(auto& point : results) {
         assert(distance_function(point, Point({0, 0})) <= radius);
     }
 
-    return std::make_pair(results.size(), calls);
+    return std::make_pair(results.size(), tree->getCalls());
 }
 
 std::vector<Point> read_points(std::string filename, std::size_t len) {
@@ -76,22 +73,25 @@ int main(int argc, char* argv[]) {
     for (auto file : files) {
         std::cout << file << std::endl;
 
-        std::ofstream out(file + ".out.txt");
+        //std::ofstream out(file + ".out.txt");
 
-        for (std::size_t i = 1000; i < 10000; i += 1000) {
-            auto points = read_points(file, i);
+        for (std::size_t i = 5; i <= 50000; i += 1) {
+            //show_progress(i / 50000.0);
 
-            auto radius = 15.0;
+	        auto points1 = read_points(file, i);
+            auto points2 = points1;
 
-            auto metric_bench   = benchmark<MetricTree<Point, distance_function>>(points, radius);
-            auto enhanced_bench = benchmark<EnhancedMetricTree<Point, distance_function>>(points, radius);
+            auto radius = 5.0;
 
-           out << i << " "
+            auto metric_bench   = benchmark<MetricTree<Point, distance_function>>(points1, radius);
+            auto enhanced_bench = benchmark<EnhancedMetricTree<Point, distance_function>>(points2, radius);
+
+            std::cout << i << " "
                       <<  std::get<1>(metric_bench)   << " " << std::get<1>(enhanced_bench) << " "
-                      <<  1.0 - (std::get<0>(enhanced_bench) / (1.0 * std::get<0>(metric_bench))) << std::endl;
+                      <<  std::get<0>(enhanced_bench) << " " << std::get<0>(metric_bench)   << std::endl;
         }
 
-        out.close();
+        //out.close();
     }
     return 0;
 }
