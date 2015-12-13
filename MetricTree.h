@@ -6,8 +6,8 @@
 #define THESIS_METRICTREE_H
 
 #include <vector>
-#include <queue>
-#include <memory>
+#include <functional>
+
 #include "IMetricTree.h"
 
 template<
@@ -18,10 +18,12 @@ class MetricTree : public IMetricTree<T, distance> {
 public:
     MetricTree(std::vector<T> points) {
         std::vector<std::shared_ptr<Node>> nodes;
+        nodes.reserve(points.size());
+
         for (auto& point : points) {
             nodes.push_back(std::make_shared<Node>(point));
         }
-        this->root = build_tree(nodes, 0, points.size());
+        this->root = build_tree(nodes.begin(), nodes.end());
     }
 
     int getCalls() const {
@@ -35,60 +37,11 @@ public:
         return results;
     }
 
-    T nearest_neighbor(const T& target) const {
-        std::priority_queue<
-                std::pair<double, std::shared_ptr<Node>>,
-                std::vector<std::pair<double, std::shared_ptr<Node>>>,
-                pair_compare> next_branch;
-
-        auto nearest_point    = this->root->point;
-        auto nearest_distance = distance(target, nearest_point);
-
-        next_branch.push(std::make_pair(0.0, this->root));
-
-        while (!next_branch.empty()) {
-            const auto queue_node = next_branch.top();
-
-            const auto branch_distance = std::get<0>(queue_node);
-            const auto node            = std::get<1>(queue_node);
-
-            if (branch_distance >= nearest_distance) {
-                return nearest_point;
-            }
-
-            next_branch.pop();
-
-            const auto distance_to_node = distance(target, node->point);
-
-            if (distance_to_node < nearest_distance) {
-                nearest_distance = distance_to_node;
-                nearest_point    = node->point;
-            }
-
-            if (node->left != nullptr) {
-                if (distance_to_node > node->innerRadius) {
-                    next_branch.push(std::make_pair(distance_to_node - node->innerRadius, node->left));
-                } else {
-                    next_branch.push(std::make_pair(0.0, node->left));
-                }
-            }
-
-            if (node->right != nullptr){
-                if (distance_to_node < node->outerRadius) {
-                    if (distance_to_node < node->outerRadius) {
-                        next_branch.push(std::make_pair(node->outerRadius - distance_to_node, node->right));
-                    } else {
-                        next_branch.push(std::make_pair(0.0, node->right));
-                    }
-                }
-            }
-        }
-
-        return nearest_point;
-    }
-
 private:
     mutable int calls;
+
+    constexpr static const double infinity = std::numeric_limits<double>::max();
+
     struct Node {
         T point;
 
@@ -98,52 +51,43 @@ private:
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
 
-        Node(T point) : point(point), innerRadius(0), outerRadius(0) {}
+        Node(T point) : point(point), innerRadius(0), outerRadius(infinity) {}
     };
 
     std::shared_ptr<Node> root;
 
-    struct pair_compare {
-        bool operator()(std::pair<double, std::shared_ptr<Node>> first, std::pair<double, std::shared_ptr<Node>> second) {
-            return std::get<0>(first) < std::get<0>(second);
-        }
-    };
-
-    std::shared_ptr<Node> build_tree(std::vector<std::shared_ptr<Node>> points, std::size_t low, std::size_t high) {
+    std::shared_ptr<Node> build_tree(const typename std::vector<std::shared_ptr<Node>>::iterator low,
+                                     const typename std::vector<std::shared_ptr<Node>>::iterator high) const {
         if (low == high) {
             return nullptr;
         }
 
         if ((high - low) == 1) {
-            return points[low];
+            return *low;
         }
 
-        for (auto i = low + 1; i < high; i++) {
-            points[i]->innerRadius = distance(points[low]->point, points[i]->point);
+        for (auto itr = low + 1; itr != high; itr++) {
+            (*itr)->innerRadius = distance((*low)->point, (*itr)->point);
         }
 
-        const auto mid = (high + low) / 2;
+        const auto median = low + (high - low) / 2;
 
-        const auto first  = points.begin() + low + 1;
-        const auto median = points.begin() + mid;
-        const auto last   = points.begin() + high;
-
-        const auto inner_radius_compare = [](const std::shared_ptr<Node> n1, const std::shared_ptr<Node> n2){
+        std::nth_element(low + 1, median, high, [](const auto n1, const auto n2) {
             return n1->innerRadius < n2->innerRadius;
-        };
+        });
 
-        nth_element(first, median, last, inner_radius_compare);
+        (*low)->outerRadius = (*median)->innerRadius;
 
-        points[low]->outerRadius = (*median)->innerRadius;
+        const auto pointOnInnerRadius = std::max_element(low, median, [](const auto n1, const auto n2) {
+            return n1->innerRadius < n2->innerRadius;
+        });
 
-        const auto pointOnInnerRadius = max_element(first, median, inner_radius_compare);
+        (*low)->innerRadius = (*pointOnInnerRadius)->innerRadius;
 
-        points[low]->innerRadius = (*pointOnInnerRadius)->innerRadius;
+        (*low)->left  = build_tree(low + 1, median);
+        (*low)->right = build_tree(median, high);
 
-        points[low]->left  = build_tree(points, low + 1, mid);
-        points[low]->right = build_tree(points, mid, high);
-
-        return points[low];
+        return *low;
     }
 
     void search(std::shared_ptr<Node> node, std::vector<T>& result, const T& target, double radius) const {
@@ -152,7 +96,7 @@ private:
         }
 
         const auto dist = distance(node->point, target);
-        calls++;
+        this->calls++;
 
         if (dist <= radius) {
             result.push_back(node->point);

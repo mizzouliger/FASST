@@ -9,23 +9,23 @@
 #include "MetricTree.h"
 #include "EnhancedMetricTree.h"
 
-
-double distance_function(const Point& p1,  const Point& p2) {
-    return Point::euclidean_distance(p1, p2);
-}
+struct result {
+    std::vector<Point> result;
+    int calls;
+};
 
 template<typename T>
-std::pair<unsigned long, int> benchmark(std::vector<Point> points, const double radius) {
-    static_assert(std::is_base_of<IMetricTree<Point, distance_function>, T>::value, "T must derive from IMetricTree");
+struct result benchmark(std::vector<Point> points, const double radius) {
+    static_assert(std::is_base_of<IMetricTree<Point, Point::euclidean_distance>, T>::value, "T must derive from IMetricTree");
 
-    std::unique_ptr<IMetricTree<Point, distance_function>> tree(new T(points));
+    std::unique_ptr<IMetricTree<Point, Point::euclidean_distance>> tree(new T(points));
     auto results = tree->search(Point({0, 0}), radius);
 
     for(auto& point : results) {
-        assert(distance_function(point, Point({0, 0})) <= radius);
+        assert(Point::euclidean_distance(point, Point({0, 0})) <= radius);
     }
 
-    return std::make_pair(results.size(), tree->getCalls());
+    return {results, tree->getCalls()};
 }
 
 std::vector<Point> read_points(std::string filename, std::size_t len) {
@@ -49,7 +49,7 @@ std::vector<Point> read_points(std::string filename, std::size_t len) {
     file.close();
     return points;
 }
-
+/*
 void show_progress(double progress) {
 
         int barWidth = 70;
@@ -64,6 +64,7 @@ void show_progress(double progress) {
         std::cout << "] " << int(progress * 100.0) << " %\r";
         std::cout.flush();
 }
+*/
 
 int main(int argc, char* argv[]) {
     std::vector<std::string> files = {
@@ -71,27 +72,25 @@ int main(int argc, char* argv[]) {
     };
 
     for (auto file : files) {
-        std::cout << file << std::endl;
+        //std::cout << file << std::endl;
 
-        //std::ofstream out(file + ".out.txt");
+        //std::cout << "#\tmcalls\tcontrol" << std::endl;
 
-        for (std::size_t i = 5; i <= 50000; i += 1) {
+        for (std::size_t i = 100; i <= 100000; i += 100) {
             //show_progress(i / 50000.0);
 
 	        auto points1 = read_points(file, i);
-            auto points2 = points1;
+            auto points2 = read_points(file, i);
 
             auto radius = 5.0;
 
-            auto metric_bench   = benchmark<MetricTree<Point, distance_function>>(points1, radius);
-            auto enhanced_bench = benchmark<EnhancedMetricTree<Point, distance_function>>(points2, radius);
+            auto metric_bench   = benchmark<MetricTree<Point, Point::euclidean_distance>>        (points1, radius);
+            auto enhanced_bench = benchmark<EnhancedMetricTree<Point, Point::euclidean_distance>>(points2, radius);
 
-            std::cout << i << " "
-                      <<  std::get<1>(metric_bench)   << " " << std::get<1>(enhanced_bench) << " "
-                      <<  std::get<0>(enhanced_bench) << " " << std::get<0>(metric_bench)   << std::endl;
+            std::cout << i << " " << metric_bench.calls << " " << enhanced_bench.calls << std::endl;
+
+            assert(metric_bench.result.size()  == enhanced_bench.result.size());
         }
-
-        //out.close();
     }
     return 0;
 }

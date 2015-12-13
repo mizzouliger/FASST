@@ -1,19 +1,15 @@
 #ifndef THESIS_ENHANCEDMETRICTRREE_H
 #define THESIS_ENHANCEDMETRICTRREE_H
 
-#include <functional>
 #include <vector>
-#include <queue>
-#include <unordered_map>
-#include <iomanip>
+#include <functional>
+#include <cmath>
 
 #include "IMetricTree.h"
 
 template<
         typename T,
-        double(*distance)(const T&, const T&),
-        class hash  = std::hash<T>,
-        class equal = std::equal_to<T>
+        double(*distance)(const T&, const T&)
 >
 class EnhancedMetricTree : public IMetricTree<T, distance> {
 public:
@@ -26,299 +22,149 @@ public:
         }
 
         std::vector<T> predecessors;
-        this->root = build_tree(predecessors, nodes, 0, points.size());
-    }
-
-    std::vector<T> search(const T &target, double radius) const {
-        std::vector<T> results;
-        std::vector<double> predecessors;
-        calls = 0;
-        search(this->root, results, target, radius, predecessors);
-        return results;
-    }
-
-    T nearest_neighbor(const T &target) const {
-        std::unordered_map<T, double, hash, equal> distance_by_point;
-        std::priority_queue<
-                std::pair<double, std::shared_ptr<Node>>,
-                std::vector<std::pair<double, std::shared_ptr<Node>>>,
-                pair_compare> next_branch;
-
-        auto nearest_point    = this->root->point;
-        auto nearest_distance = distance(target, nearest_point);
-
-        next_branch.push(std::make_pair(0.0, this->root));
-
-        while (!next_branch.empty()) {
-            const auto queue_node = next_branch.top();
-
-            const auto branch_distance = std::get<0>(queue_node);
-            const auto node            = std::get<1>(queue_node);
-
-            if (branch_distance >= nearest_distance) {
-                return nearest_point;
-            }
-
-            next_branch.pop();
-
-            auto distance_to_node = distance(target, node->point);
-
-            if (node->triangle_prune(distance_to_node, distance_by_point)) {
-                continue;
-            }
-
-            distance_by_point[node->point] = distance_to_node;
-
-            if (distance_to_node < nearest_distance) {
-                nearest_distance = distance_to_node;
-                nearest_point    = node->point;
-            }
-
-            if (node->left != nullptr) {
-                if (distance_to_node > node->innerRadius) {
-                    next_branch.push(std::make_pair(distance_to_node - node->innerRadius, node->left));
-                } else {
-                    next_branch.push(std::make_pair(0.0, node->left));
-                }
-            }
-
-            if (node->right != nullptr){
-                if (distance_to_node < node->outerRadius) {
-                    if (distance_to_node < node->outerRadius) {
-                        next_branch.push(
-                                std::make_pair(node->outerRadius - distance_to_node, node->right));
-                    } else {
-                        next_branch.push(
-                                std::make_pair(0.0, node->right));
-                    }
-                }
-            }
-        }
-
-        return nearest_point;
+        this->root = build_tree(nodes.begin(), nodes.end());
+        this->infinity = std::numeric_limits<double>::max();
     }
 
     int getCalls() const {
-        return calls;
+        return this->calls;
+    }
+
+    std::vector<T> search(const T& target, double radius) const {
+        std::vector<T> results;
+        this->calls = 0;
+
+        search(root, results, target, radius, {infinity});
+        return results;
     }
 
 private:
-
+    double infinity;
     mutable int calls;
 
     struct Node {
         T point;
 
-        std::vector<double> ancestors;
-
         double innerRadius;
         double outerRadius;
 
-        std::weak_ptr<Node> parent;
+        std::vector<double> parent_distance;
 
-        std::shared_ptr<Node> right;
         std::shared_ptr<Node> left;
+        std::shared_ptr<Node> right;
 
-        Node(T point) : point(point), innerRadius(0), outerRadius(0) {}
-
-        bool triangle_prune(std::vector<double> distances, double radius) const {
-            /*double maxDist = 0;
-
-            for (auto i = 0; i < this->ancestors.size(); i++) {
-                if (std::abs(this->ancestors[i] - distances[i]) > maxDist) {
-                    maxDist = std::abs(this->ancestors[i] - distances[i]);
-                }
-            }*/
-
-            if (this->ancestors.size() == 0) return false;
-            return !(std::abs(this->ancestors[this->ancestors.size() - 1] - distances[this->ancestors.size() - 1]) < radius);
-        }
-
-        bool triangle_prune(double dist, std::vector<double> distances) const {
-
-            for (auto i = 0; i < ancestors.size(); i++) {
-
-                const auto sum = ancestors[i] + distances[i];
-
-                if (sum < dist) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        bool triangle_prune(double dist, std::unordered_map<T, double> distance_by_point) const {
-            auto weak_parent = this->parent;
-
-            for (auto i = static_cast<int>(ancestors.size()) - 1; i >= 0 ; i--) {
-                auto parent = weak_parent.lock();
-                if (!parent) break;
-
-                auto sum = ancestors[i] + distance_by_point[parent->point];
-
-                if (dist > sum) {
-                    return true;
-                }
-
-                weak_parent = parent->parent;
-            }
-
-            return false;
+        Node(T point) : point(point), innerRadius(0), outerRadius(0) {
+            this->parent_distance.push_back(std::numeric_limits<double>::max());
         }
     };
 
     std::shared_ptr<Node> root;
 
-    struct pair_compare {
-        bool operator()(std::pair<double, std::shared_ptr<Node>> first, std::pair<double, std::shared_ptr<Node>> second) {
-            return std::get<0>(first) < std::get<0>(second);
-        }
-    };
-
-    std::shared_ptr<Node> build_tree(std::vector<T> &predecessors, std::vector<std::shared_ptr<Node>> points,
-                                     std::size_t low, std::size_t high) {
+    std::shared_ptr<Node> build_tree(const typename std::vector<std::shared_ptr<Node>>::iterator low,
+                                     const typename std::vector<std::shared_ptr<Node>>::iterator high) const {
         if (low == high) {
             return nullptr;
         }
 
         if ((high - low) == 1) {
-            return points[low];
+            return *low;
         }
 
-        for (auto i = low + 1; i < high; i++) {
-            points[i]->innerRadius = distance(points[low]->point, points[i]->point);
-            points[i]->ancestors.push_back(points[i]->innerRadius);
+        for (auto itr = low + 1; itr != high; itr++) {
+            (*itr)->innerRadius     = distance((*low)->point, (*itr)->point);
+            (*itr)->parent_distance.push_back((*itr)->innerRadius);
         }
 
-        const auto mid = (high + low) / 2;
+        const auto median = low + (high - low) / 2;
 
-        const auto first  = points.begin() + low + 1;
-        const auto median = points.begin() + mid;
-        const auto last   = points.begin() + high;
-
-        const auto inner_radius_compare = [](const std::shared_ptr<Node> n1, const std::shared_ptr<Node> n2){
+        std::nth_element(low + 1, median, high, [](const auto n1, const auto n2) {
             return n1->innerRadius < n2->innerRadius;
-        };
+        });
 
-        std::nth_element(first, median, last, inner_radius_compare);
+        (*low)->outerRadius = (*median)->innerRadius;
 
-        points[low]->outerRadius = (*median)->innerRadius;
+        const auto pointOnInnerRadius = std::max_element(low, median, [](const auto n1, const auto n2) {
+            return n1->innerRadius < n2->innerRadius;
+        });
 
-        const auto pointOnInnerRadius = std::max_element(first, median, inner_radius_compare);
+        (*low)->innerRadius = (*pointOnInnerRadius)->innerRadius;
 
-        points[low]->innerRadius = (*pointOnInnerRadius)->innerRadius;
+        (*low)->left  = build_tree(low + 1, median);
+        (*low)->right = build_tree(median, high);
 
-        /*for (auto& point : predecessors) {
-            auto min_dist  = distance(points[low]->point, point);
-
-            for (auto i = low + 1; i < high; i++) {
-                auto new_dist = distance(point, points[i]->point);
-                if (new_dist < min_dist) {
-                    min_dist = new_dist;
-                }
-            }
-
-            points[low]->ancestors.push_back(min_dist);
-        }*/
-
-        predecessors.push_back(points[low]->point);
-
-        points[low]->left  = build_tree(predecessors, points, low + 1, mid);
-        points[low]->right = build_tree(predecessors, points, mid,     high);
-
-        predecessors.pop_back();
-
-        if (points[low]->left != nullptr) {
-            points[low]->left->parent = points[low];
-        }
-
-        if (points[low]->right != nullptr) {
-            points[low]->right->parent = points[low];
-        }
-
-        return points[low];
+        return *low;
     }
 
-    double min_sum(std::vector<double> v1, std::vector<double> v2) const {
-        auto minSum = std::numeric_limits<double>::max();
-
-        for (auto i = 0; i < v1.size(); i++) {
-            if (v1[i] + v2[i] < minSum) {
-                minSum = v1[i] + v2[i];
+    double min_distance(std::vector<double> d1, std::vector<double> d2) const {
+        double max = 0;
+        for (auto i = 0; i < d1.size(); i++) {
+            const auto dist = d1[i] == infinity || d2[i] == infinity ? 0 : std::fabs(d1[i] - d2[i]);
+            if (dist > max) {
+                max = dist;
             }
         }
-
-        return std::ceil(minSum);
+        return std::floor(max);
     }
 
-    double max_diff(std::vector<double> v1, std::vector<double> v2) const {
-        double maxDiff = 0;
-
-        for (auto i = 0; i < v1.size(); i++) {
-            if (std::abs(v1[i] - v2[i]) > maxDiff) {
-                maxDiff = std::abs(v1[i] - v2[i]);
+    double max_distance(std::vector<double> d1, std::vector<double> d2) const {
+        double min = infinity;
+        for (auto i = 0; i < d1.size(); i++) {
+            const auto dist = d1[i] == infinity || d2[i] == infinity ? infinity : d1[i] + d2[i];
+            if (dist < min) {
+                min = dist;
             }
         }
-
-        return std::floor(maxDiff);
+        return std::ceil(min);
     }
 
-    void search(std::shared_ptr<Node> node, std::vector<T> &result,
-                const T &target, double radius, std::vector<double>&ancestors) const {
-
+    void search(std::shared_ptr<Node> node, std::vector<T>& result, const T& target, double radius, std::vector<double> last) const {
         if (node == nullptr) {
             return;
         }
 
-        const auto minDist = max_diff(node->ancestors, ancestors);
-        const auto maxDist = min_sum(node->ancestors, ancestors);
+        const auto minDistance = min_distance(node->parent_distance, last);
+        const auto maxDistance = max_distance(node->parent_distance, last);
 
-        if (maxDist <= radius) {
-            result.push_back(node->point);
-            ancestors.push_back(maxDist);
+        const auto d = distance(target, node->point);
 
-            if (maxDist - radius <= node->innerRadius) {
-                search(node->right, result, target, radius, ancestors);
+        assert(minDistance <= d);
+        assert(d <= maxDistance);
+
+        if (radius < minDistance || maxDistance <= radius) {
+
+            if (maxDistance <= radius) {
+                result.push_back(node->point);
             }
 
-            if (maxDist + radius >= node->outerRadius) {
-                search(node->left, result, target, radius, ancestors);
+            last.push_back(infinity);
+            if (minDistance - radius <= node->innerRadius) {
+                search(node->left, result, target, radius, last);
             }
-            ancestors.pop_back();
-        }else if (minDist <= radius && maxDist >= radius) {
-            this->calls++;
+
+            if (maxDistance + radius >= node->outerRadius) {
+                search(node->right, result, target, radius, last);
+            }
+            
+        } else {
             const auto dist = distance(node->point, target);
+            this->calls++;
+
+            last.push_back(dist);
 
             if (dist <= radius) {
                 result.push_back(node->point);
             }
 
-            ancestors.push_back(dist);
-
             if (dist - radius <= node->innerRadius) {
-                search(node->right, result, target, radius, ancestors);
+                search(node->left, result, target, radius, last);
             }
 
             if (dist + radius >= node->outerRadius) {
-                search(node->left, result, target, radius, ancestors);
+                search(node->right, result, target, radius, last);
             }
-
-            ancestors.pop_back();
-        } else {
-            ancestors.push_back(maxDist);
-            if (maxDist - radius <= node->innerRadius) {
-                search(node->right, result, target, radius, ancestors);
-            }
-            ancestors.pop_back();
-
-            ancestors.push_back(minDist);
-            if (minDist + radius >= node->outerRadius) {
-                search(node->left, result, target, radius, ancestors);
-            }
-            ancestors.pop_back();
         }
     }
 };
+
 
 #endif //THESIS_ENHANCEDMETRICTRREE_H
