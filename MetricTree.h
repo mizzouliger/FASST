@@ -40,8 +40,6 @@ public:
 private:
     mutable int calls;
 
-    constexpr static const double infinity = std::numeric_limits<double>::max();
-
     struct Node {
         T point;
 
@@ -51,7 +49,7 @@ private:
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
 
-        Node(T point) : point(point), innerRadius(0), outerRadius(infinity) {}
+        Node(T point) : point(point), innerRadius(0), outerRadius(IMetricTree<T, distance>::infinity) {}
     };
 
     std::shared_ptr<Node> root;

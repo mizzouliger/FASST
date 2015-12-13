@@ -12,6 +12,9 @@ class IMetricTree {
 public:
     virtual std::vector<T> search(const T& target, double radius) const = 0;
     virtual int getCalls() const = 0;
+
+protected:
+    static constexpr double infinity = std::numeric_limits<double>::max();
 };
 
 
