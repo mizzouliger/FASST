@@ -22,7 +22,8 @@ public:
         }
 
         std::vector<T> predecessors;
-        this->root = build_tree(nodes.begin(), nodes.end());
+
+        this->root     = build_tree(nodes.begin(), nodes.end());
         this->infinity = std::numeric_limits<double>::max();
     }
 
@@ -31,11 +32,11 @@ public:
     }
 
     std::vector<T> search(const T& target, double radius) const {
-        std::vector<T> results;
+        std::vector<T> inRange;
         this->calls = 0;
 
-        search(root, results, target, radius, {infinity});
-        return results;
+        search(root, inRange, target, radius, {infinity});
+        return inRange;
     }
 
 private:
@@ -53,7 +54,7 @@ private:
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
 
-        Node(T point) : point(point), innerRadius(0), outerRadius(0) {
+        Node(T point) : point(point), innerRadius(0), outerRadius(std::numeric_limits<double>::max()) {
             this->parent_distance.push_back(std::numeric_limits<double>::max());
         }
     };
@@ -95,10 +96,10 @@ private:
         return *low;
     }
 
-    double min_distance(std::vector<double> d1, std::vector<double> d2) const {
+    double min_distance(std::vector<double> v1, std::vector<double> v2) const {
         double max = 0;
-        for (auto i = 0; i < d1.size(); i++) {
-            const auto dist = d1[i] == infinity || d2[i] == infinity ? 0 : std::fabs(d1[i] - d2[i]);
+        for (auto i = 0; i < v1.size(); i++) {
+            const auto dist = v1[i] == infinity || v2[i] == infinity ? 0 : std::fabs(v1[i] - v2[i]);
             if (dist > max) {
                 max = dist;
             }
@@ -106,10 +107,10 @@ private:
         return std::floor(max);
     }
 
-    double max_distance(std::vector<double> d1, std::vector<double> d2) const {
+    double max_distance(std::vector<double> v1, std::vector<double> v2) const {
         double min = infinity;
-        for (auto i = 0; i < d1.size(); i++) {
-            const auto dist = d1[i] == infinity || d2[i] == infinity ? infinity : d1[i] + d2[i];
+        for (auto i = 0; i < v1.size(); i++) {
+            const auto dist = v1[i] == infinity || v2[i] == infinity ? infinity : v1[i] + v2[i];
             if (dist < min) {
                 min = dist;
             }
@@ -117,7 +118,7 @@ private:
         return std::ceil(min);
     }
 
-    void search(std::shared_ptr<Node> node, std::vector<T>& result, const T& target, double radius, std::vector<double> last) const {
+    void search(std::shared_ptr<Node> node, std::vector<T> &inRange, const T& target, double radius, std::vector<double> last) const {
         if (node == nullptr) {
             return;
         }
@@ -133,16 +134,16 @@ private:
         if (radius < minDistance || maxDistance <= radius) {
 
             if (maxDistance <= radius) {
-                result.push_back(node->point);
+                inRange.push_back(node->point);
             }
 
             last.push_back(infinity);
             if (minDistance - radius <= node->innerRadius) {
-                search(node->left, result, target, radius, last);
+                search(node->left, inRange, target, radius, last);
             }
 
             if (maxDistance + radius >= node->outerRadius) {
-                search(node->right, result, target, radius, last);
+                search(node->right, inRange, target, radius, last);
             }
             
         } else {
@@ -152,15 +153,15 @@ private:
             last.push_back(dist);
 
             if (dist <= radius) {
-                result.push_back(node->point);
+                inRange.push_back(node->point);
             }
 
             if (dist - radius <= node->innerRadius) {
-                search(node->left, result, target, radius, last);
+                search(node->left, inRange, target, radius, last);
             }
 
             if (dist + radius >= node->outerRadius) {
-                search(node->right, result, target, radius, last);
+                search(node->right, inRange, target, radius, last);
             }
         }
     }

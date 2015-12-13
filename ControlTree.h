@@ -16,15 +16,15 @@ public:
     std::vector<T> search(const T& target, double radius) const {
         this->calls = 0;
 
-        std::vector<T> found;
+        std::vector<T> inRange;
         for (auto point : points) {
             this->calls++;
             if (distance(point, target) <= radius) {
-                found.push_back(point);
+                inRange.push_back(point);
             }
         }
 
-        return found;
+        return inRange;
     }
 
     int getCalls() const {

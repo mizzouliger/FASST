@@ -31,10 +31,10 @@ public:
     }
 
     std::vector<T> search(const T& target, double radius) const {
-        std::vector<T> results;
+        std::vector<T> inRange;
         this->calls = 0;
-        search(root, results, target, radius);
-        return results;
+        search(root, inRange, target, radius);
+        return inRange;
     }
 
 private:
@@ -88,7 +88,7 @@ private:
         return *low;
     }
 
-    void search(std::shared_ptr<Node> node, std::vector<T>& result, const T& target, double radius) const {
+    void search(std::shared_ptr<Node> node, std::vector<T> &inRange, const T& target, double radius) const {
         if (node == nullptr) {
             return;
         }
@@ -97,15 +97,15 @@ private:
         this->calls++;
 
         if (dist <= radius) {
-            result.push_back(node->point);
+            inRange.push_back(node->point);
         }
 
         if (dist - radius <= node->innerRadius) {
-            search(node->left, result, target, radius);
+            search(node->left, inRange, target, radius);
         }
 
         if (dist + radius >= node->outerRadius) {
-            search(node->right, result, target, radius);
+            search(node->right, inRange, target, radius);
         }
     }
 };
