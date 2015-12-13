@@ -126,6 +126,8 @@ private:
         const auto minDistance = min_distance(node->parent_distance, last);
         const auto maxDistance = max_distance(node->parent_distance, last);
 
+        //This distance calculation is just for running the asserts and testing
+        //It is not used in any logic and so is not counted towards distance calls
         const auto d = distance(target, node->point);
 
         assert(minDistance <= d);
