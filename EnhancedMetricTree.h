@@ -24,7 +24,6 @@ public:
         std::vector<T> predecessors;
 
         this->root     = build_tree(nodes.begin(), nodes.end());
-        this->infinity = std::numeric_limits<double>::max();
     }
 
     int getCalls() const {
@@ -40,7 +39,6 @@ public:
     }
 
 private:
-    double infinity;
     mutable int calls;
 
     struct Node {
@@ -54,8 +52,42 @@ private:
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
 
-        Node(T point) : point(point), innerRadius(0), outerRadius(std::numeric_limits<double>::max()) {
-            this->parent_distance.push_back(std::numeric_limits<double>::max());
+        Node(T point) : point(point), innerRadius(0), outerRadius(infinity) {
+            this->parent_distance.push_back(infinity);
+        }
+
+        bool triangle_unknown(double side1, double side2) const {
+            return side1 == infinity || side2 == infinity;
+        }
+
+        double min_triangle(std::vector<double> ancestor_distances) const {
+            double max = 0;
+            for (auto i = 0; i < this->parent_distance.size(); i++) {
+                if (!triangle_unknown(this->parent_distance[i], ancestor_distances[i])) {
+                    const auto dist = std::fabs(this->parent_distance[i] - ancestor_distances[i]);
+
+                    if (max < dist) {
+                        max = dist;
+                    }
+                }
+            }
+
+            return max;
+        }
+
+        double max_triangle(std::vector<double> ancestor_distances) const {
+            double min = infinity;
+            for (auto i = 0; i < this->parent_distance.size(); i++) {
+                if (!triangle_unknown(this->parent_distance[i], ancestor_distances[i])) {
+                    const auto dist = std::ceil(this->parent_distance[i] + ancestor_distances[i]);
+
+                    if (dist < min) {
+                        min = dist;
+                    }
+                }
+            }
+
+            return min;
         }
     };
 
@@ -96,35 +128,13 @@ private:
         return *low;
     }
 
-    double min_distance(std::vector<double> v1, std::vector<double> v2) const {
-        double max = 0;
-        for (auto i = 0; i < v1.size(); i++) {
-            const auto dist = v1[i] == infinity || v2[i] == infinity ? 0 : std::fabs(v1[i] - v2[i]);
-            if (dist > max) {
-                max = dist;
-            }
-        }
-        return std::floor(max);
-    }
-
-    double max_distance(std::vector<double> v1, std::vector<double> v2) const {
-        double min = infinity;
-        for (auto i = 0; i < v1.size(); i++) {
-            const auto dist = v1[i] == infinity || v2[i] == infinity ? infinity : v1[i] + v2[i];
-            if (dist < min) {
-                min = dist;
-            }
-        }
-        return std::ceil(min);
-    }
-
     void search(std::shared_ptr<Node> node, std::vector<T> &inRange, const T& target, double radius, std::vector<double> last) const {
         if (node == nullptr) {
             return;
         }
 
-        const auto minDistance = min_distance(node->parent_distance, last);
-        const auto maxDistance = max_distance(node->parent_distance, last);
+        const auto minDistance = node->min_triangle(last);
+        const auto maxDistance = node->max_triangle(last);
 
         //This distance calculation is just for running the asserts and testing
         //It is not used in any logic and so it is not counted towards distance

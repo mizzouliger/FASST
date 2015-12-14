@@ -49,7 +49,7 @@ private:
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
 
-        Node(T point) : point(point), innerRadius(0), outerRadius(IMetricTree<T, distance>::infinity) {}
+        Node(T point) : point(point), innerRadius(0), outerRadius(infinity) {}
     };
 
     std::shared_ptr<Node> root;
