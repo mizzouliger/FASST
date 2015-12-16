@@ -6,15 +6,16 @@
 #define THESIS_IMETRICTREE_H
 
 #include <vector>
+namespace Spatial {
+    static constexpr double infinity = std::numeric_limits<double>::max();
 
-static constexpr double infinity = std::numeric_limits<double>::max();
+    template<typename T, double(*distance)(const T &, const T &)>
+    class IMetricTree {
+    public:
+        virtual std::vector<T> search(const T &target, double radius) const = 0;
 
-template<typename T, double(*distance)(const T&, const T&)>
-class IMetricTree {
-public:
-    virtual std::vector<T> search(const T& target, double radius) const = 0;
-    virtual int getCalls() const = 0;
-};
-
+        virtual int getCalls() const = 0;
+    };
+}
 
 #endif //THESIS_IMETRICTREE_H

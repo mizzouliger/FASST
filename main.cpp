@@ -9,6 +9,8 @@
 #include "MetricTree.h"
 #include "EnhancedMetricTree.h"
 
+using namespace Spatial;
+
 struct result {
     std::vector<Point> result;
     int calls;

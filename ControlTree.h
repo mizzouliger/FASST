@@ -5,37 +5,37 @@
 #ifndef THESIS_CONTROLTREE_H
 #define THESIS_CONTROLTREE_H
 
-
 #include "IMetricTree.h"
 
-template<typename T, double(*distance)(const T&, const T&)>
-class ControlTree : public IMetricTree<T, distance>{
-public:
-    ControlTree(std::vector<T> points) : points(points) {}
+namespace Spatial {
+    template<typename T, double(*distance)(const T &, const T &)>
+    class ControlTree : public IMetricTree<T, distance> {
+    public:
+        ControlTree(std::vector<T> points) : points(points) { }
 
-    std::vector<T> search(const T& target, double radius) const {
-        this->calls = 0;
+        std::vector<T> search(const T &target, double radius) const {
+            this->calls = 0;
 
-        std::vector<T> inRange;
-        for (auto point : points) {
-            this->calls++;
-            if (distance(point, target) <= radius) {
-                inRange.push_back(point);
+            std::vector<T> inRange;
+            for (auto point : points) {
+                this->calls++;
+                if (distance(point, target) <= radius) {
+                    inRange.push_back(point);
+                }
             }
+
+            return inRange;
         }
 
-        return inRange;
-    }
+        int getCalls() const {
+            return calls;
+        }
 
-    int getCalls() const {
-        return calls;
-    }
+    private:
 
-private:
-
-    mutable int calls = 0;
-    std::vector<T> points;
-};
-
+        mutable int calls = 0;
+        std::vector<T> points;
+    };
+}
 
 #endif //THESIS_CONTROLTREE_H
