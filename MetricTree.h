@@ -76,7 +76,7 @@ namespace Spatial {
 
             (*low)->outerRadius = (*median)->innerRadius;
 
-            const auto pointOnInnerRadius = std::max_element(low, median, [](const auto n1, const auto n2) {
+            const auto pointOnInnerRadius = std::max_element(low + 1, median, [](const auto n1, const auto n2) {
                 return n1->innerRadius < n2->innerRadius;
             });
 

@@ -60,7 +60,7 @@ namespace Spatial {
                 return side1 == infinity || side2 == infinity;
             }
 
-            double min_triangle(std::vector<double> ancestor_distances) const {
+            double maximize_minimum_triangle_length(std::vector<double> ancestor_distances) const {
                 double max = 0;
                 for (auto i = 0; i < this->parent_distance.size(); i++) {
                     if (!triangle_unknown(this->parent_distance[i], ancestor_distances[i])) {
@@ -75,7 +75,7 @@ namespace Spatial {
                 return max;
             }
 
-            double max_triangle(std::vector<double> ancestor_distances) const {
+            double minimize_maximum_triangle_length(std::vector<double> ancestor_distances) const {
                 double min = infinity;
                 for (auto i = 0; i < this->parent_distance.size(); i++) {
                     if (!triangle_unknown(this->parent_distance[i], ancestor_distances[i])) {
@@ -116,7 +116,7 @@ namespace Spatial {
 
             (*low)->outerRadius = (*median)->innerRadius;
 
-            const auto pointOnInnerRadius = std::max_element(low, median, [](const auto n1, const auto n2) {
+            const auto pointOnInnerRadius = std::max_element(low + 1, median, [](const auto n1, const auto n2) {
                 return n1->innerRadius < n2->innerRadius;
             });
 
@@ -134,8 +134,8 @@ namespace Spatial {
                 return;
             }
 
-            const auto minDistance = node->min_triangle(last);
-            const auto maxDistance = node->max_triangle(last);
+            const auto minDistance = node->maximize_minimum_triangle_length(last);
+            const auto maxDistance = node->minimize_maximum_triangle_length(last);
 
             //This distance calculation is just for running the asserts and testing
             //It is not used in any logic and so it is not counted towards distance
