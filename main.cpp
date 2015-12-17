@@ -6,9 +6,9 @@
 
 #include "Point.h"
 #include "MetricTree.h"
-#include "EnhancedMetricTree.h"
+#include "GatedMetricTree.h"
 
-using namespace Spatial;
+using namespace Thesis;
 
 struct result {
     std::vector<Point> result;
@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
             auto radius = 5.0;
 
             auto metric_bench   = benchmark<MetricTree<Point, Point::euclidean_distance>>        (points1, radius);
-            auto enhanced_bench = benchmark<EnhancedMetricTree<Point, Point::euclidean_distance>>(points2, radius);
+            auto enhanced_bench = benchmark<GatedMetricTree<Point, Point::euclidean_distance>>(points2, radius);
 
             std::cout << i << " " << metric_bench.calls << " " << enhanced_bench.calls << std::endl;
 

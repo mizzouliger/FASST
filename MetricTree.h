@@ -9,7 +9,7 @@
 #include <functional>
 
 #include "IMetricTree.h"
-namespace Spatial {
+namespace Thesis {
     template<
             typename T,
             double(*distance)(const T &, const T &)

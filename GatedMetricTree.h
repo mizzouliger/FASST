@@ -6,14 +6,14 @@
 #include <cmath>
 
 #include "IMetricTree.h"
-namespace Spatial {
+namespace Thesis {
     template<
             typename T,
             double(*distance)(const T &, const T &)
     >
-    class EnhancedMetricTree : public IMetricTree<T, distance> {
+    class GatedMetricTree : public IMetricTree<T, distance> {
     public:
-        EnhancedMetricTree(std::vector<T> points) {
+        GatedMetricTree(std::vector<T> points) {
             std::vector<std::shared_ptr<Node>> nodes;
             nodes.reserve(points.size());
 

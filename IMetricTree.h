@@ -6,7 +6,7 @@
 #define THESIS_IMETRICTREE_H
 
 #include <vector>
-namespace Spatial {
+namespace Thesis {
     static constexpr double infinity = std::numeric_limits<double>::max();
 
     template<typename T, double(*distance)(const T &, const T &)>
