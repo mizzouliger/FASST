@@ -56,3 +56,7 @@ void Point::check_size(Point const& a, Point const& b, std::string msg) {
         throw std::domain_error(msg);
     }
 }
+
+Point Point::origin(std::size_t dim) {
+    return Point(std::vector<double>(dim, 0.0));
+}

@@ -19,6 +19,7 @@ public:
 
     unsigned long size() const;
     static double euclidean_distance(const Point& a, const Point& b);
+    static Point  origin(std::size_t dim);
 
 private:
     std::vector<double> elements;

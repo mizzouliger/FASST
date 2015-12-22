@@ -1,6 +1,5 @@
 #include <iostream>
 #include <assert.h>
-#include <algorithm>
 #include <fstream>
 #include <sstream>
 
@@ -9,6 +8,8 @@
 #include "GatedMetricTree.h"
 
 using namespace Thesis;
+
+const std::size_t dim = 2;
 
 struct result {
     std::vector<Point> result;
@@ -20,10 +21,10 @@ struct result benchmark(std::vector<Point> points, const double radius) {
     static_assert(std::is_base_of<IMetricTree<Point, Point::euclidean_distance>, T>::value, "T must derive from IMetricTree");
 
     std::unique_ptr<IMetricTree<Point, Point::euclidean_distance>> tree(new T(points));
-    auto results = tree->search(Point({0, 0}), radius);
+    auto results = tree->search(Point::origin(dim), radius);
 
     for(auto& point : results) {
-        assert(Point::euclidean_distance(point, Point({0, 0})) <= radius);
+        assert(Point::euclidean_distance(point, Point::origin(dim)) <= radius);
     }
 
     return {results, tree->getCalls()};
