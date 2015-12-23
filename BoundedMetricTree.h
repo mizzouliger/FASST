@@ -5,6 +5,8 @@
 #ifndef THESIS_BOUNDEDMETRICTREE_H
 #define THESIS_BOUNDEDMETRICTREE_H
 
+#include <queue>
+
 #include "IMetricTree.h"
 
 namespace Thesis {
@@ -35,6 +37,36 @@ public:
         return inRange;
     }
 
+    //super naive implementation, will fix this latter
+    T nearest_neighbor(const T& target) {
+        T nearest_point = root->point;
+        T nearest_distance = distance(target, root->point);
+
+        std::queue<T> q;
+        q.push(root->point);
+
+        while (!q.empty()) {
+            auto next = q.front();
+            q.pop();
+
+            const auto d = distance(next, target);
+            if (d < nearest_distance) {
+                nearest_distance = d;
+                nearest_point    = next;
+            }
+
+            if (next->left) {
+                q.push(next->left);
+            }
+
+            if (next->right) {
+                q.push(next->right);
+            }
+        }
+
+        return nearest_point;
+    }
+    
 private:
     mutable int calls;
 
@@ -115,11 +147,11 @@ private:
             inRange.push_back(node->point);
         }
 
-        if (dist + radius >= node->left_distances.nearest && dist - radius <= node->left_distances.furthest) {
+        if (dist + radius >= node->left_distances.nearest && dist - radius < node->left_distances.furthest) {
             search(node->left, inRange, target, radius);
         }
 
-        if (dist + radius >= node->right_distances.nearest && dist - radius <= node->right_distances.furthest) {
+        if (dist + radius >= node->right_distances.nearest && dist - radius < node->right_distances.furthest) {
             search(node->right, inRange, target, radius);
         }
     }
