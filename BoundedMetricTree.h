@@ -10,11 +10,8 @@
 #include "IMetricTree.h"
 
 namespace Thesis {
-template<
-        typename T,
-        double (*distance)(const T&, const T&)
->
-class BoundedMetricTree : public IMetricTree<T, distance>{
+template<typename T, double (*distance)(const T &, const T &)>
+class BoundedMetricTree : public IMetricTree<T, distance> {
 public:
     BoundedMetricTree(std::vector<T> points) : calls(0) {
         std::vector<std::shared_ptr<Node>> nodes;
@@ -30,7 +27,7 @@ public:
         return this->calls;
     }
 
-    std::vector<T> search(const T& target, const double radius) const {
+    std::vector<T> search(const T &target, const double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
         search(root, inRange, target, radius);
@@ -38,7 +35,7 @@ public:
     }
 
     //super naive implementation, will fix this latter
-    T nearest_neighbor(const T& target) {
+    T nearest_neighbor(const T &target) {
         T nearest_point = root->point;
         T nearest_distance = distance(target, root->point);
 
@@ -52,7 +49,7 @@ public:
             const auto d = distance(next, target);
             if (d < nearest_distance) {
                 nearest_distance = d;
-                nearest_point    = next;
+                nearest_point = next;
             }
 
             if (next->left) {
@@ -66,8 +63,10 @@ public:
 
         return nearest_point;
     }
-    
+
 private:
+    //using node_itr = typename std::vector<std::shared_ptr<typename BoundedMetricTree<T, distance>::Node>>::iterator;
+
     mutable int calls;
 
     struct Node {
@@ -75,7 +74,7 @@ private:
             double nearest;
             double furthest;
 
-            Distances() : nearest(0), furthest(0) {}
+            Distances() : nearest(0), furthest(0) { }
         };
 
         T point;
@@ -86,7 +85,7 @@ private:
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
 
-        Node(T point): point(point) {}
+        Node(T point) : point(point) { }
     };
 
     std::shared_ptr<Node> root;
@@ -123,13 +122,13 @@ private:
             return n1->left_distances.nearest < n2->left_distances.nearest;
         });
 
-        (*low)->left_distances.nearest  = (*left_min)->left_distances.nearest;
+        (*low)->left_distances.nearest = (*left_min)->left_distances.nearest;
         (*low)->left_distances.furthest = (*left_max)->left_distances.nearest;
 
-        (*low)->right_distances.nearest  = (*median)->left_distances.nearest;
+        (*low)->right_distances.nearest = (*median)->left_distances.nearest;
         (*low)->right_distances.furthest = (*right_max)->left_distances.nearest;
 
-        (*low)->left  = build_tree(low + 1, median);
+        (*low)->left = build_tree(low + 1, median);
         (*low)->right = build_tree(median, high);
 
         return (*low);
