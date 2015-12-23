@@ -6,6 +6,7 @@
 #include "Point.h"
 #include "MetricTree.h"
 #include "GatedMetricTree.h"
+#include "BoundedMetricTree.h"
 
 using namespace Thesis;
 
@@ -78,7 +79,7 @@ int main(int argc, char* argv[]) {
 
         //std::cout << "#\tmcalls\tcontrol" << std::endl;
 
-        for (std::size_t i = 100; i <= 100000; i += 100) {
+        for (std::size_t i = 10; i <= 100000; i += 10) {
             //show_progress(i / 50000.0);
 
 	        auto points1 = read_points(file, i);
@@ -87,7 +88,7 @@ int main(int argc, char* argv[]) {
             auto radius = 5.0;
 
             auto metric_bench   = benchmark<MetricTree<Point, Point::euclidean_distance>>        (points1, radius);
-            auto enhanced_bench = benchmark<GatedMetricTree<Point, Point::euclidean_distance>>(points2, radius);
+            auto enhanced_bench = benchmark<BoundedMetricTree<Point, Point::euclidean_distance>>(points2, radius);
 
             std::cout << i << " " << metric_bench.calls << " " << enhanced_bench.calls << std::endl;
 

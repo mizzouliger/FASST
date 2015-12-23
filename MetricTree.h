@@ -103,7 +103,7 @@ namespace Thesis {
 
         (*low)->innerRadius = (*pointOnInnerRadius)->innerRadius;
 
-        (*low)->left = build_tree(low + 1, median);
+        (*low)->left  = build_tree(low + 1, median);
         (*low)->right = build_tree(median, high);
 
         return *low;
