@@ -6,6 +6,7 @@
 #define THESIS_METRICTREE_H
 
 #include <vector>
+#include <queue>
 #include <functional>
 
 #include "IMetricTree.h"
