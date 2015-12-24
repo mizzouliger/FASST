@@ -9,16 +9,16 @@
 #include <functional>
 
 #include "IMetricTree.h"
+
 namespace Thesis {
 
-    template<
-            typename T,
-            double(*distance)(const T &, const T &)
-    >
+    template<typename T, double(*distance)(const T &, const T &)>
     class MetricTree : public IMetricTree<T, distance> {
     public:
         MetricTree(std::vector<T> points);
+
         std::vector<T> search(const T &target, double radius) const;
+
         int getCalls() const;
 
     private:
@@ -31,20 +31,22 @@ namespace Thesis {
             std::shared_ptr<Node> left;
             std::shared_ptr<Node> right;
 
-            Node(T point) : point(point), innerRadius(0), outerRadius(infinity) { }
+            Node(T point) : point(point), innerRadius(0), outerRadius(0) { }
         };
 
-        using node_itr = typename std::vector<std::shared_ptr<typename MetricTree<T,distance>::Node>>::iterator;
+        using node_itr = typename std::vector<std::shared_ptr<typename MetricTree<T, distance>::Node>>::iterator;
 
         mutable int calls;
         std::shared_ptr<Node> root;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
-        void search(const std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, const double radius) const;
+
+        void search(const std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target,
+                    const double radius) const;
     };
 
     template<typename T, double(*distance)(const T &, const T &)>
-    MetricTree<T,distance>::MetricTree(std::vector<T> points) : calls(0) {
+    MetricTree<T, distance>::MetricTree(std::vector<T> points) : calls(0) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -55,12 +57,12 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    int MetricTree<T,distance>::getCalls() const {
+    int MetricTree<T, distance>::getCalls() const {
         return this->calls;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    std::vector<T> MetricTree<T,distance>::search(const T &target, double radius) const {
+    std::vector<T> MetricTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
 
@@ -69,8 +71,8 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    std::shared_ptr<typename MetricTree<T,distance>::Node>
-    MetricTree<T,distance>::build_tree(const node_itr low, const node_itr high) const {
+    std::shared_ptr<typename MetricTree<T, distance>::Node>
+    MetricTree<T, distance>::build_tree(const node_itr low, const node_itr high) const {
         if (low == high) {
             return nullptr;
         }
@@ -104,7 +106,12 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    void MetricTree<T,distance>::search(const std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, const double radius) const {
+    void MetricTree<T, distance>::search(
+            const std::shared_ptr<Node> node,
+            std::vector<T> &inRange,
+            const T &target,
+            const double radius
+    ) const {
         if (node == nullptr) {
             return;
         }

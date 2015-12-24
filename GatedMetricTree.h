@@ -3,17 +3,16 @@
 
 #include <vector>
 #include <functional>
-#include <cmath>
 
+#include "TriangleUtils.hpp"
 #include "IMetricTree.h"
+
 namespace Thesis {
-    template<
-            typename T,
-            double(*distance)(const T &, const T &)
-    >
+    template<typename T, double(*distance)(const T &, const T &)>
     class GatedMetricTree : public IMetricTree<T, distance> {
     public:
         GatedMetricTree(std::vector<T> points);
+
         std::vector<T> search(const T &target, double radius) const;
 
         int getCalls() const;
@@ -25,62 +24,34 @@ namespace Thesis {
             double innerRadius;
             double outerRadius;
 
-            std::vector<double> parent_distance;
+            std::vector<double> parent_distances;
 
             std::shared_ptr<Node> left;
             std::shared_ptr<Node> right;
 
-            Node(T point) : point(point), innerRadius(0), outerRadius(infinity) {
-                this->parent_distance.push_back(infinity);
-            }
-
-            bool triangle_unknown(double side1, double side2) const {
-                return side1 == infinity || side2 == infinity;
-            }
-
-            double maximize_minimum_triangle_length(std::vector<double> ancestor_distances) const {
-                double max = 0;
-                for (auto i = 0; i < this->parent_distance.size(); i++) {
-                    if (!triangle_unknown(this->parent_distance[i], ancestor_distances[i])) {
-                        const auto dist = std::fabs(this->parent_distance[i] - ancestor_distances[i]);
-
-                        if (max < dist) {
-                            max = dist;
-                        }
-                    }
-                }
-
-                return max;
-            }
-
-            double minimize_maximum_triangle_length(std::vector<double> ancestor_distances) const {
-                double min = infinity;
-                for (auto i = 0; i < this->parent_distance.size(); i++) {
-                    if (!triangle_unknown(this->parent_distance[i], ancestor_distances[i])) {
-                        const auto dist = std::ceil(this->parent_distance[i] + ancestor_distances[i]);
-
-                        if (dist < min) {
-                            min = dist;
-                        }
-                    }
-                }
-
-                return min;
+            Node(T point) : point(point), innerRadius(0), outerRadius(0) {
+                this->parent_distances.push_back(TriangleUtils::infinity);
             }
         };
 
-        using node_itr = typename std::vector<std::shared_ptr<typename GatedMetricTree<T,distance>::Node>>::iterator;
+        using node_itr = typename std::vector<std::shared_ptr<typename GatedMetricTree<T, distance>::Node>>::iterator;
 
         mutable int calls;
         std::shared_ptr<Node> root;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
-        void search(const std::shared_ptr<Node> node, std::vector<T> &inRange,
-                    const T &target, const double radius, std::vector<double> last) const;
+
+        void search(
+                const std::shared_ptr<Node> node,
+                std::vector<T> &inRange,
+                const T &target,
+                const double radius,
+                std::vector<double> ancestors
+        ) const;
     };
 
     template<typename T, double(*distance)(const T &, const T &)>
-    GatedMetricTree<T,distance>::GatedMetricTree(std::vector<T> points) {
+    GatedMetricTree<T, distance>::GatedMetricTree(std::vector<T> points) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -88,28 +59,26 @@ namespace Thesis {
             nodes.push_back(std::make_shared<Node>(point));
         }
 
-        std::vector<T> predecessors;
-
         this->root = build_tree(nodes.begin(), nodes.end());
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    std::vector<T> GatedMetricTree<T,distance>::search(const T &target, double radius) const {
+    std::vector<T> GatedMetricTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
 
-        search(root, inRange, target, radius, {infinity});
+        search(root, inRange, target, radius, {TriangleUtils::infinity});
         return inRange;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    int GatedMetricTree<T,distance>::getCalls() const {
+    int GatedMetricTree<T, distance>::getCalls() const {
         return this->calls;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    std::shared_ptr<typename GatedMetricTree<T,distance>::Node>
-    GatedMetricTree<T,distance>::build_tree(const node_itr low, const node_itr high) const {
+    std::shared_ptr<typename GatedMetricTree<T, distance>::Node>
+    GatedMetricTree<T, distance>::build_tree(const node_itr low, const node_itr high) const {
         if (low == high) {
             return nullptr;
         }
@@ -120,7 +89,7 @@ namespace Thesis {
 
         for (auto itr = low + 1; itr != high; itr++) {
             (*itr)->innerRadius = distance((*low)->point, (*itr)->point);
-            (*itr)->parent_distance.push_back((*itr)->innerRadius);
+            (*itr)->parent_distances.push_back((*itr)->innerRadius);
         }
 
         const auto median = low + (high - low) / 2;
@@ -144,14 +113,19 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    void GatedMetricTree<T,distance>::search(const std::shared_ptr<Node> node, std::vector<T> &inRange,
-                                             const T &target, const double radius, std::vector<double> last) const {
+    void GatedMetricTree<T, distance>::search(
+            const std::shared_ptr<Node> node,
+            std::vector<T> &inRange,
+            const T &target,
+            const double radius,
+            std::vector<double> ancestors
+    ) const {
         if (node == nullptr) {
             return;
         }
 
-        const auto minDistance = node->maximize_minimum_triangle_length(last);
-        const auto maxDistance = node->minimize_maximum_triangle_length(last);
+        const auto minDistance = TriangleUtils::maximize_minimum_triangle_length(node->parent_distances, ancestors);
+        const auto maxDistance = TriangleUtils::minimize_maximum_triangle_length(node->parent_distances, ancestors);
 
         //This distance calculation is just for running the asserts and testing
         //It is not used in any logic and so it is not counted towards distance
@@ -167,31 +141,31 @@ namespace Thesis {
                 inRange.push_back(node->point);
             }
 
-            last.push_back(infinity);
+            ancestors.push_back(TriangleUtils::infinity);
             if (minDistance - radius <= node->innerRadius) {
-                search(node->left, inRange, target, radius, last);
+                search(node->left, inRange, target, radius, ancestors);
             }
 
             if (maxDistance + radius >= node->outerRadius) {
-                search(node->right, inRange, target, radius, last);
+                search(node->right, inRange, target, radius, ancestors);
             }
 
         } else {
             const auto dist = distance(node->point, target);
             this->calls++;
 
-            last.push_back(dist);
+            ancestors.push_back(dist);
 
             if (dist <= radius) {
                 inRange.push_back(node->point);
             }
 
             if (dist - radius <= node->innerRadius) {
-                search(node->left, inRange, target, radius, last);
+                search(node->left, inRange, target, radius, ancestors);
             }
 
             if (dist + radius >= node->outerRadius) {
-                search(node->right, inRange, target, radius, last);
+                search(node->right, inRange, target, radius, ancestors);
             }
         }
     }
