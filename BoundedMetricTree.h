@@ -59,7 +59,7 @@ namespace Thesis {
     };
 
     template<typename T, double (*distance)(const T &, const T &)>
-    BoundedMetricTree<T,distance>::BoundedMetricTree(std::vector<T> points) : calls(0) {
+    BoundedMetricTree<T, distance>::BoundedMetricTree(std::vector<T> points) : calls(0) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -70,7 +70,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    std::vector<T> BoundedMetricTree<T,distance>::search(const T &target, double radius) const {
+    std::vector<T> BoundedMetricTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
 
