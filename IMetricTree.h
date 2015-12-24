@@ -6,9 +6,8 @@
 #define THESIS_IMETRICTREE_H
 
 #include <vector>
-namespace Thesis {
-    static constexpr double infinity = std::numeric_limits<double>::max();
 
+namespace Thesis {
     template<typename T, double(*distance)(const T &, const T &)>
     class IMetricTree {
     public:
