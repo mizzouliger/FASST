@@ -40,11 +40,11 @@ namespace Thesis {
         std::shared_ptr<Node> root;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
-        void search(std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, double radius) const;
+        void search(const std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, const double radius) const;
     };
 
     template<typename T, double(*distance)(const T &, const T &)>
-    MetricTree<T,distance>::MetricTree(std::vector<T> points) {
+    MetricTree<T,distance>::MetricTree(std::vector<T> points) : calls(0) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -69,7 +69,8 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    std::shared_ptr<typename MetricTree<T,distance>::Node> MetricTree<T,distance>::build_tree(const node_itr low, const node_itr high) const {
+    std::shared_ptr<typename MetricTree<T,distance>::Node>
+    MetricTree<T,distance>::build_tree(const node_itr low, const node_itr high) const {
         if (low == high) {
             return nullptr;
         }
@@ -103,7 +104,7 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    void MetricTree<T,distance>::search(std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, const double radius) const {
+    void MetricTree<T,distance>::search(const std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, const double radius) const {
         if (node == nullptr) {
             return;
         }

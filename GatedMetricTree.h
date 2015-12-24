@@ -13,34 +13,12 @@ namespace Thesis {
     >
     class GatedMetricTree : public IMetricTree<T, distance> {
     public:
-        GatedMetricTree(std::vector<T> points) {
-            std::vector<std::shared_ptr<Node>> nodes;
-            nodes.reserve(points.size());
+        GatedMetricTree(std::vector<T> points);
+        std::vector<T> search(const T &target, double radius) const;
 
-            for (auto &point : points) {
-                nodes.push_back(std::make_shared<Node>(point));
-            }
-
-            std::vector<T> predecessors;
-
-            this->root = build_tree(nodes.begin(), nodes.end());
-        }
-
-        int getCalls() const {
-            return this->calls;
-        }
-
-        std::vector<T> search(const T &target, double radius) const {
-            std::vector<T> inRange;
-            this->calls = 0;
-
-            search(root, inRange, target, radius, {infinity});
-            return inRange;
-        }
+        int getCalls() const;
 
     private:
-        mutable int calls;
-
         struct Node {
             T point;
 
@@ -91,95 +69,132 @@ namespace Thesis {
             }
         };
 
+        using node_itr = typename std::vector<std::shared_ptr<typename GatedMetricTree<T,distance>::Node>>::iterator;
+
+        mutable int calls;
         std::shared_ptr<Node> root;
 
-        std::shared_ptr<Node> build_tree(const typename std::vector<std::shared_ptr<Node>>::iterator low,
-                                         const typename std::vector<std::shared_ptr<Node>>::iterator high) const {
-            if (low == high) {
-                return nullptr;
-            }
+        std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
+        void search(const std::shared_ptr<Node> node, std::vector<T> &inRange,
+                    const T &target, const double radius, std::vector<double> last) const;
+    };
 
-            if ((high - low) == 1) {
-                return *low;
-            }
+    template<typename T, double(*distance)(const T &, const T &)>
+    GatedMetricTree<T,distance>::GatedMetricTree(std::vector<T> points) {
+        std::vector<std::shared_ptr<Node>> nodes;
+        nodes.reserve(points.size());
 
-            for (auto itr = low + 1; itr != high; itr++) {
-                (*itr)->innerRadius = distance((*low)->point, (*itr)->point);
-                (*itr)->parent_distance.push_back((*itr)->innerRadius);
-            }
+        for (auto &point : points) {
+            nodes.push_back(std::make_shared<Node>(point));
+        }
 
-            const auto median = low + (high - low) / 2;
+        std::vector<T> predecessors;
 
-            std::nth_element(low + 1, median, high, [](const auto n1, const auto n2) {
-                return n1->innerRadius < n2->innerRadius;
-            });
+        this->root = build_tree(nodes.begin(), nodes.end());
+    }
 
-            (*low)->outerRadius = (*median)->innerRadius;
+    template<typename T, double(*distance)(const T &, const T &)>
+    std::vector<T> GatedMetricTree<T,distance>::search(const T &target, double radius) const {
+        std::vector<T> inRange;
+        this->calls = 0;
 
-            const auto pointOnInnerRadius = std::max_element(low + 1, median, [](const auto n1, const auto n2) {
-                return n1->innerRadius < n2->innerRadius;
-            });
+        search(root, inRange, target, radius, {infinity});
+        return inRange;
+    }
 
-            (*low)->innerRadius = (*pointOnInnerRadius)->innerRadius;
+    template<typename T, double(*distance)(const T &, const T &)>
+    int GatedMetricTree<T,distance>::getCalls() const {
+        return this->calls;
+    }
 
-            (*low)->left = build_tree(low + 1, median);
-            (*low)->right = build_tree(median, high);
+    template<typename T, double(*distance)(const T &, const T &)>
+    std::shared_ptr<typename GatedMetricTree<T,distance>::Node>
+    GatedMetricTree<T,distance>::build_tree(const node_itr low, const node_itr high) const {
+        if (low == high) {
+            return nullptr;
+        }
 
+        if ((high - low) == 1) {
             return *low;
         }
 
-        void search(std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, double radius,
-                    std::vector<double> last) const {
-            if (node == nullptr) {
-                return;
+        for (auto itr = low + 1; itr != high; itr++) {
+            (*itr)->innerRadius = distance((*low)->point, (*itr)->point);
+            (*itr)->parent_distance.push_back((*itr)->innerRadius);
+        }
+
+        const auto median = low + (high - low) / 2;
+
+        std::nth_element(low + 1, median, high, [](const auto n1, const auto n2) {
+            return n1->innerRadius < n2->innerRadius;
+        });
+
+        (*low)->outerRadius = (*median)->innerRadius;
+
+        const auto pointOnInnerRadius = std::max_element(low + 1, median, [](const auto n1, const auto n2) {
+            return n1->innerRadius < n2->innerRadius;
+        });
+
+        (*low)->innerRadius = (*pointOnInnerRadius)->innerRadius;
+
+        (*low)->left = build_tree(low + 1, median);
+        (*low)->right = build_tree(median, high);
+
+        return *low;
+    }
+
+    template<typename T, double(*distance)(const T &, const T &)>
+    void GatedMetricTree<T,distance>::search(const std::shared_ptr<Node> node, std::vector<T> &inRange,
+                                             const T &target, const double radius, std::vector<double> last) const {
+        if (node == nullptr) {
+            return;
+        }
+
+        const auto minDistance = node->maximize_minimum_triangle_length(last);
+        const auto maxDistance = node->minimize_maximum_triangle_length(last);
+
+        //This distance calculation is just for running the asserts and testing
+        //It is not used in any logic and so it is not counted towards distance
+        //calls
+        const auto d = distance(target, node->point);
+
+        assert(minDistance <= d);
+        assert(d <= maxDistance);
+
+        if (radius < minDistance || maxDistance <= radius) {
+
+            if (maxDistance <= radius) {
+                inRange.push_back(node->point);
             }
 
-            const auto minDistance = node->maximize_minimum_triangle_length(last);
-            const auto maxDistance = node->minimize_maximum_triangle_length(last);
+            last.push_back(infinity);
+            if (minDistance - radius <= node->innerRadius) {
+                search(node->left, inRange, target, radius, last);
+            }
 
-            //This distance calculation is just for running the asserts and testing
-            //It is not used in any logic and so it is not counted towards distance
-            //calls
-            const auto d = distance(target, node->point);
+            if (maxDistance + radius >= node->outerRadius) {
+                search(node->right, inRange, target, radius, last);
+            }
 
-            assert(minDistance <= d);
-            assert(d <= maxDistance);
+        } else {
+            const auto dist = distance(node->point, target);
+            this->calls++;
 
-            if (radius < minDistance || maxDistance <= radius) {
+            last.push_back(dist);
 
-                if (maxDistance <= radius) {
-                    inRange.push_back(node->point);
-                }
+            if (dist <= radius) {
+                inRange.push_back(node->point);
+            }
 
-                last.push_back(infinity);
-                if (minDistance - radius <= node->innerRadius) {
-                    search(node->left, inRange, target, radius, last);
-                }
+            if (dist - radius <= node->innerRadius) {
+                search(node->left, inRange, target, radius, last);
+            }
 
-                if (maxDistance + radius >= node->outerRadius) {
-                    search(node->right, inRange, target, radius, last);
-                }
-
-            } else {
-                const auto dist = distance(node->point, target);
-                this->calls++;
-
-                last.push_back(dist);
-
-                if (dist <= radius) {
-                    inRange.push_back(node->point);
-                }
-
-                if (dist - radius <= node->innerRadius) {
-                    search(node->left, inRange, target, radius, last);
-                }
-
-                if (dist + radius >= node->outerRadius) {
-                    search(node->right, inRange, target, radius, last);
-                }
+            if (dist + radius >= node->outerRadius) {
+                search(node->right, inRange, target, radius, last);
             }
         }
-    };
+    }
 }
 
 #endif //THESIS_ENHANCEDMETRICTRREE_H
