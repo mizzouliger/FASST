@@ -10,10 +10,56 @@
 #include "IMetricTree.h"
 
 namespace Thesis {
-template<typename T, double (*distance)(const T &, const T &)>
-class BoundedMetricTree : public IMetricTree<T, distance> {
-public:
-    BoundedMetricTree(std::vector<T> points) : calls(0) {
+    template<typename T, double (*distance)(const T &, const T &)>
+    class BoundedMetricTree : public IMetricTree<T, distance> {
+    public:
+        BoundedMetricTree(std::vector<T> points);
+
+        std::vector<T> search(const T &target, const double radius) const;
+
+        //super naive implementation, will fix this latter
+        T nearest_neighbor(const T &target);
+
+        int getCalls() const;
+
+    private:
+
+        struct Node {
+            struct Distances {
+                double nearest;
+                double furthest;
+
+                Distances() : nearest(0), furthest(0) { }
+            };
+
+            T point;
+
+            Distances left_distances;
+            Distances right_distances;
+
+            std::shared_ptr<Node> left;
+            std::shared_ptr<Node> right;
+
+            Node(T point) : point(point) { }
+        };
+
+        using node_itr = typename std::vector<std::shared_ptr<typename BoundedMetricTree<T, distance>::Node>>::iterator;
+
+        std::shared_ptr<Node> root;
+        mutable int calls;
+
+        std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
+
+        void search(
+                std::shared_ptr<Node> node,
+                std::vector<T> &inRange,
+                const T &target,
+                const double radius
+        ) const;
+    };
+
+    template<typename T, double (*distance)(const T &, const T &)>
+    BoundedMetricTree<T,distance>::BoundedMetricTree(std::vector<T> points) : calls(0) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -23,19 +69,22 @@ public:
         this->root = build_tree(nodes.begin(), nodes.end());
     }
 
-    int getCalls() const {
-        return this->calls;
-    }
-
-    std::vector<T> search(const T &target, const double radius) const {
+    template<typename T, double (*distance)(const T &, const T &)>
+    std::vector<T> BoundedMetricTree<T,distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
+
         search(root, inRange, target, radius);
         return inRange;
     }
 
-    //super naive implementation, will fix this latter
-    T nearest_neighbor(const T &target) {
+    template<typename T, double (*distance)(const T &, const T &)>
+    int BoundedMetricTree<T, distance>::getCalls() const {
+        return this->calls;
+    }
+
+    template<typename T, double (*distance)(const T &, const T &)>
+    T BoundedMetricTree<T, distance>::nearest_neighbor(const T &target) {
         T nearest_point = root->point;
         T nearest_distance = distance(target, root->point);
 
@@ -64,34 +113,10 @@ public:
         return nearest_point;
     }
 
-private:
-    //using node_itr = typename std::vector<std::shared_ptr<typename BoundedMetricTree<T, distance>::Node>>::iterator;
 
-    mutable int calls;
-
-    struct Node {
-        struct Distances {
-            double nearest;
-            double furthest;
-
-            Distances() : nearest(0), furthest(0) { }
-        };
-
-        T point;
-
-        Distances left_distances;
-        Distances right_distances;
-
-        std::shared_ptr<Node> left;
-        std::shared_ptr<Node> right;
-
-        Node(T point) : point(point) { }
-    };
-
-    std::shared_ptr<Node> root;
-
-    std::shared_ptr<Node> build_tree(const typename std::vector<std::shared_ptr<Node>>::iterator low,
-                                     const typename std::vector<std::shared_ptr<Node>>::iterator high) const {
+    template<typename T, double (*distance)(const T &, const T &)>
+    std::shared_ptr<typename BoundedMetricTree<T, distance>::Node>
+    BoundedMetricTree<T, distance>::build_tree(const node_itr low, const node_itr high) const {
         if (low == high) {
             return nullptr;
         }
@@ -134,7 +159,13 @@ private:
         return (*low);
     }
 
-    void search(std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, const double radius) const {
+    template<typename T, double (*distance)(const T &, const T &)>
+    void BoundedMetricTree<T, distance>::search(
+            std::shared_ptr<Node> node,
+            std::vector<T> &inRange,
+            const T &target,
+            const double radius
+    ) const {
         if (node == nullptr) {
             return;
         }
@@ -154,7 +185,6 @@ private:
             search(node->right, inRange, target, radius);
         }
     }
-};
 }
 
 
