@@ -12,24 +12,10 @@
 namespace Thesis {
     template<typename T, double (*distance)(const T &, const T &)>
     class BoundedMetricTree : public IMetricTree<T, distance> {
-    public:
-        BoundedMetricTree(std::vector<T> points);
-
-        std::vector<T> search(const T &target, const double radius) const;
-
-        //super naive implementation, will fix this latter
-        T nearest_neighbor(const T &target);
-
-        int getCalls() const;
-
-    private:
-
         struct Node {
             struct Distances {
-                double nearest;
-                double furthest;
-
-                Distances() : nearest(0), furthest(0) { }
+                std::vector<double> nearest;
+                std::vector<double> furthest;
             };
 
             T point;
@@ -48,7 +34,11 @@ namespace Thesis {
         std::shared_ptr<Node> root;
         mutable int calls;
 
-        std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
+        std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const;
+
+        void configure_left(std::shared_ptr<Node> root, std::shared_ptr<Node> left, const std::vector<T> &ancestors) const;
+
+        void configure_right(std::shared_ptr<Node> root, std::shared_ptr<Node> right, const std::vector<T> &ancestors) const;
 
         void search(
                 std::shared_ptr<Node> node,
@@ -56,6 +46,18 @@ namespace Thesis {
                 const T &target,
                 const double radius
         ) const;
+
+    public:
+        BoundedMetricTree(std::vector<T> points);
+
+        std::vector<T> search(const T &target, const double radius) const;
+
+        //super naive implementation, will fix this later
+        T nearest_neighbor(const std::shared_ptr<Node> node, const T &target) const;
+
+        T furthest_neighbor(const std::shared_ptr<Node> node, const T &target) const;
+
+        int getCalls() const;
     };
 
     template<typename T, double (*distance)(const T &, const T &)>
@@ -66,7 +68,9 @@ namespace Thesis {
         for (auto &point : points) {
             nodes.push_back(std::make_shared<Node>(point));
         }
-        this->root = build_tree(nodes.begin(), nodes.end());
+
+        std::vector<T> ancestors;
+        this->root = build_tree(nodes.begin(), nodes.end(), ancestors);
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
@@ -84,79 +88,133 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    T BoundedMetricTree<T, distance>::nearest_neighbor(const T &target) {
-        T nearest_point = root->point;
-        T nearest_distance = distance(target, root->point);
+    T BoundedMetricTree<T, distance>::nearest_neighbor(const std::shared_ptr<Node> node, const T &target) const {
+        T nearest_point = node->point;
+        double nearest_distance = distance(target, nearest_point);
 
-        std::queue<T> q;
-        q.push(root->point);
+        std::queue<std::shared_ptr<Node>> queue;
+        queue.push(node);
 
-        while (!q.empty()) {
-            auto next = q.front();
-            q.pop();
+        while (!queue.empty()) {
+            auto next = queue.front();
+            queue.pop();
 
-            const auto d = distance(next, target);
-            if (d < nearest_distance) {
-                nearest_distance = d;
-                nearest_point = next;
+            double next_distance = distance(next->point, target);
+
+            if (next_distance < nearest_distance) {
+                nearest_distance = next_distance;
+                nearest_point = next->point;
             }
 
             if (next->left) {
-                q.push(next->left);
+                queue.push(next->left);
             }
 
             if (next->right) {
-                q.push(next->right);
+                queue.push(next->right);
             }
         }
 
         return nearest_point;
     }
 
+    template<typename T, double (*distance)(const T &, const T &)>
+    T BoundedMetricTree<T, distance>::furthest_neighbor(const std::shared_ptr<Node> node, const T &target) const {
+        T furthest_point = node->point;
+        double furthest_distance = distance(target, furthest_point);
+
+        std::queue<std::shared_ptr<Node>> queue;
+        queue.push(node);
+
+        while (!queue.empty()) {
+            auto next = queue.front();
+            queue.pop();
+
+            double next_distance = distance(next->point, target);
+
+            if (furthest_distance < next_distance) {
+                furthest_distance = next_distance;
+                furthest_point = next->point;
+            }
+
+            if (next->left) {
+                queue.push(next->left);
+            }
+
+            if (next->right) {
+                queue.push(next->right);
+            }
+        }
+
+        return furthest_point;
+    }
 
     template<typename T, double (*distance)(const T &, const T &)>
     std::shared_ptr<typename BoundedMetricTree<T, distance>::Node>
-    BoundedMetricTree<T, distance>::build_tree(const node_itr low, const node_itr high) const {
+    BoundedMetricTree<T, distance>::build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const {
         if (low == high) {
             return nullptr;
         }
 
         if ((high - low) == 1) {
+            ancestors.push_back((*low)->point);
+
+            configure_left(*low, left, ancestors);
+            configure_right(*low, right, ancestors);
+
+
+
             return *low;
         }
 
         for (auto itr = low + 1; itr != high; itr++) {
-            (*itr)->left_distances.nearest = distance((*low)->point, (*itr)->point);
+            (*itr)->left_distances.nearest[0] = distance((*low)->point, (*itr)->point);
         }
 
         const auto median = low + (high - low) / 2;
 
         std::nth_element(low + 1, median, high, [](const auto n1, const auto n2) {
-            return n1->left_distances.nearest < n2->left_distances.nearest;
+            return n1->left_distances.nearest[0] < n2->left_distances.nearest[0];
         });
 
-        const auto left_min = std::min_element(low + 1, median, [](const auto n1, const auto n2) {
-            return n1->left_distances.nearest < n2->left_distances.nearest;
-        });
+        ancestors.push_back((*low)->point);
 
-        const auto left_max = std::max_element(low + 1, median, [](const auto n1, const auto n2) {
-            return n1->left_distances.nearest < n2->left_distances.nearest;
-        });
+        auto left  = build_tree(low + 1, median, ancestors);
+        auto right = build_tree(median, high, ancestors);
 
-        const auto right_max = std::max_element(median, high, [](const auto n1, const auto n2) {
-            return n1->left_distances.nearest < n2->left_distances.nearest;
-        });
+        /*(*low)->left_distances.nearest.clear();
 
-        (*low)->left_distances.nearest = (*left_min)->left_distances.nearest;
-        (*low)->left_distances.furthest = (*left_max)->left_distances.nearest;
+        configure_left(*low, left, ancestors);
+        configure_right(*low, right, ancestors);*/
 
-        (*low)->right_distances.nearest = (*median)->left_distances.nearest;
-        (*low)->right_distances.furthest = (*right_max)->left_distances.nearest;
+        ancestors.pop_back();
 
-        (*low)->left = build_tree(low + 1, median);
-        (*low)->right = build_tree(median, high);
+        (*low)->left = left;
+        (*low)->right = right;
 
         return (*low);
+    }
+
+    template<typename T, double(*distance)(const T &, const T &)>
+    void BoundedMetricTree<T, distance>::configure_left(std::shared_ptr<Node> node, std::shared_ptr<Node> left, const std::vector<T> &ancestors) const {
+        for (auto &itr : ancestors) {
+            const T nearest  = nearest_neighbor(left, itr);
+            const T furthest = furthest_neighbor(left, itr);
+
+            node->left_distances.nearest.push_back(distance(itr, nearest));
+            node->left_distances.furthest.push_back(distance(itr, furthest));
+        }
+    }
+
+    template<typename T, double(*distance)(const T &, const T &)>
+    void BoundedMetricTree<T, distance>::configure_right(std::shared_ptr<Node> node, std::shared_ptr<Node> right, const std::vector<T> &ancestors) const {
+        for (auto &itr : ancestors) {
+            const T nearest  = nearest_neighbor(right, itr);
+            const T furthest = furthest_neighbor(right, itr);
+
+            node->right_distances.nearest.push_back(distance(node->point, nearest));
+            node->right_distances.furthest.push_back(distance(node->point, furthest));
+        }
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
@@ -177,11 +235,11 @@ namespace Thesis {
             inRange.push_back(node->point);
         }
 
-        if (dist + radius >= node->left_distances.nearest && dist - radius < node->left_distances.furthest) {
+        if (dist + radius >= node->left_distances.nearest[0] && dist - radius < node->left_distances.furthest[0]) {
             search(node->left, inRange, target, radius);
         }
 
-        if (dist + radius >= node->right_distances.nearest && dist - radius < node->right_distances.furthest) {
+        if (dist + radius >= node->right_distances.nearest[0] && dist - radius < node->right_distances.furthest[0]) {
             search(node->right, inRange, target, radius);
         }
     }
