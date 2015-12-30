@@ -42,14 +42,19 @@ namespace Thesis {
 
         T furthest_neighbor(const std::shared_ptr<Node> node, const T target) const;
 
+        bool visit_node(
+                const typename Node::Distances,
+                const std::vector<double> target_ancestors,
+                const double radius
+        ) const;
+
         void search(
                 std::shared_ptr<Node> node,
                 std::vector<T> &inRange,
                 const T &target,
-                const double radius
-        ) const {
-            return;
-        }
+                const double radius,
+                std::vector<double> &ancestors
+        ) const;
 
     public:
         BoundedMetricTree(std::vector<T> points);
@@ -77,7 +82,9 @@ namespace Thesis {
         std::vector<T> inRange;
         this->calls = 0;
 
-        search(root, inRange, target, radius);
+        std::vector<double> ancestors;
+
+        search(root, inRange, target, radius, ancestors);
         return inRange;
     }
 
@@ -94,6 +101,13 @@ namespace Thesis {
         }
 
         if ((high - low) == 1) {
+            const std::vector<double> empty(ancestors.size(), 0);
+
+            (*low)->left_distances.nearest  = empty;
+            (*low)->left_distances.furthest = empty;
+
+            (*low)->right_distances.nearest = empty;
+            (*low)->right_distances.furthest = empty;
             return *low;
         }
 
@@ -114,7 +128,7 @@ namespace Thesis {
 
         if (left != nullptr) {
             for (auto &point : ancestors) {
-                const T nearest = nearest_neighbor(left, point);
+                const T nearest  = nearest_neighbor(left, point);
                 const T furthest = furthest_neighbor(left, point);
 
                 (*low)->left_distances.nearest.push_back(distance((*low)->point, nearest));
@@ -131,7 +145,7 @@ namespace Thesis {
 
         if (right != nullptr) {
             for (auto &point : ancestors) {
-                const T nearest = nearest_neighbor(right, point);
+                const T nearest  = nearest_neighbor(right, point);
                 const T furthest = furthest_neighbor(right, point);
 
                 (*low)->right_distances.nearest.push_back(distance((*low)->point, nearest));
@@ -212,6 +226,59 @@ namespace Thesis {
         }
 
         return best_point;
+    }
+
+    template<typename T, double (*distance)(const T &, const T &)>
+    void BoundedMetricTree<T, distance>::search(
+            std::shared_ptr<Node> node,
+            std::vector<T> &inRange,
+            const T &target,
+            const double radius,
+            std::vector<double> &ancestors
+    ) const {
+        if (node == nullptr) {
+            return;
+        }
+
+        const auto dist = distance(target, node->point);
+        ancestors.push_back(dist);
+
+        if (dist <= radius) {
+            inRange.push_back(node->point);
+            this->calls++;
+        }
+
+        if (node->left && visit_node(node->left_distances, ancestors, radius)) {
+            search(node->left, inRange, target, radius, ancestors);
+        }
+
+        if (node->right && visit_node(node->right_distances, ancestors, radius)) {
+            search(node->right, inRange, target, radius, ancestors);
+        }
+
+        ancestors.pop_back();
+    }
+
+    template<typename T, double (*distance)(const T &, const T &)>
+    bool BoundedMetricTree<T, distance>::visit_node(
+            const typename Node::Distances distances,
+            const std::vector<double> target_ancestors,
+            const double radius
+    ) const {
+        if (distances.nearest.size() == 0) {
+            return false;
+        }
+        for (auto i = distances.nearest.size() - 1; i >= 0; i++) {
+            if (distances.nearest[i] <= target_ancestors[i] && distances.furthest[i] <= target_ancestors[i]) {
+                return true;
+            } else if (target_ancestors[i] <= distances.nearest[i] && target_ancestors[i] - distances.nearest[i] <= radius) {
+                return true;
+            } else if (target_ancestors[i] - distances.furthest[i] <= radius){
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
