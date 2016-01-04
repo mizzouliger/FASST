@@ -11,14 +11,15 @@ namespace Thesis {
             return side1 == infinity || side2 == infinity;
         }
 
-        double maximize_minimum_triangle_length(std::vector<double> side1, std::vector<double> side2) {
-            double max = 0;
-            for (auto i = 0; i < side1.size(); i++) {
-                if (!triangle_undefined(side1[i], side2[i])) {
-                        const auto dist = std::fabs(side1[i] - side2[i]);
+        Triangle maximize_minimum_triangle(std::vector<double> rootToNodeLengths,
+                                           std::vector<double> rootToTargetLengths) {
+            Triangle max(0, 0, 0);
+            for (auto i = 0; i < rootToNodeLengths.size(); i++) {
+                if (!triangle_undefined(rootToNodeLengths[i], rootToTargetLengths[i])) {
+                    const auto nodeToTargetLength = std::fabs(rootToNodeLengths[i] - rootToTargetLengths[i]);
 
-                    if (max < dist) {
-                        max = dist;
+                    if (max.getNodeToTarget() < nodeToTargetLength) {
+                        max = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
                     }
                 }
             }
@@ -26,14 +27,15 @@ namespace Thesis {
             return max;
         }
 
-        double minimize_maximum_triangle_length(std::vector<double> side1, std::vector<double> side2) {
-            double min = infinity;
-            for (auto i = 0; i < side1.size(); i++) {
-                if (!triangle_undefined(side1[i], side2[i])) {
-                    const auto dist = side1[i] + side2[i];
+        Triangle minimize_maximum_triangle(std::vector<double> rootToNodeLengths,
+                                           std::vector<double> rootToTargetLengths) {
+            Triangle min(infinity, infinity, infinity);
+            for (auto i = 0; i < rootToNodeLengths.size(); i++) {
+                if (!triangle_undefined(rootToNodeLengths[i], rootToTargetLengths[i])) {
+                    const auto nodeToTargetLength = rootToNodeLengths[i] + rootToTargetLengths[i];
 
-                    if (dist < min) {
-                        min = dist;
+                    if (nodeToTargetLength < min.getNodeToTarget()) {
+                        min = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
                     }
                 }
             }

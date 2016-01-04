@@ -10,11 +10,27 @@
 
 namespace Thesis {
     namespace TriangleUtils {
+
+        class Triangle {
+            double rootToTarget;
+            double rootToNode;
+            double nodeToTarget;
+
+        public:
+            Triangle(double a, double b, double c) : rootToTarget(a), rootToNode(b), nodeToTarget(c) {}
+
+            double getRootToTarget() const { return rootToTarget; }
+            double getRootToNode()   const { return rootToNode;   }
+            double getNodeToTarget() const { return nodeToTarget; }
+        };
+
         static constexpr double infinity = std::numeric_limits<double>::max();
 
-        double maximize_minimum_triangle_length(std::vector<double> side1, std::vector<double> side2);
+        Triangle maximize_minimum_triangle(std::vector<double> rootToNodeLengths,
+                                           std::vector<double> rootToTargetLengths);
 
-        double minimize_maximum_triangle_length(std::vector<double> side1, std::vector<double> side2);
+        Triangle minimize_maximum_triangle(std::vector<double> rootToNodeLengths,
+                                           std::vector<double> rootToTargetLengths);
     }
 }
 
