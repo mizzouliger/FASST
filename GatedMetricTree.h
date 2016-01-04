@@ -124,29 +124,29 @@ namespace Thesis {
             return;
         }
 
-        const auto minDistance = TriangleUtils::maximize_minimum_triangle_length(node->parent_distances, ancestors);
-        const auto maxDistance = TriangleUtils::minimize_maximum_triangle_length(node->parent_distances, ancestors);
+        const auto minDistance = TriangleUtils::maximize_minimum_triangle(node->parent_distances, ancestors);
+        const auto maxDistance = TriangleUtils::minimize_maximum_triangle(node->parent_distances, ancestors);
 
         //This distance calculation is just for running the asserts and testing
         //It is not used in any logic and so it is not counted towards distance
         //calls
         const auto d = distance(target, node->point);
 
-        assert(minDistance <= d);
-        assert(d <= maxDistance);
+        assert(minDistance.getNodeToTarget() <= d);
+        assert(d <= maxDistance.getNodeToTarget());
 
-        if (radius < minDistance || maxDistance <= radius) {
+        if (radius < minDistance.getNodeToTarget() || maxDistance.getNodeToTarget() <= radius) {
 
-            if (maxDistance <= radius) {
+            if (maxDistance.getNodeToTarget() <= radius) {
                 inRange.push_back(node->point);
             }
 
             ancestors.push_back(TriangleUtils::infinity);
-            if (minDistance - radius <= node->innerRadius) {
+            if (minDistance.getNodeToTarget() - radius <= node->innerRadius) {
                 search(node->left, inRange, target, radius, ancestors);
             }
 
-            if (maxDistance + radius >= node->outerRadius) {
+            if (maxDistance.getNodeToTarget() + radius >= node->outerRadius) {
                 search(node->right, inRange, target, radius, ancestors);
             }
 

@@ -6,6 +6,7 @@
 #define THESIS_METRICTREE_H
 
 #include <vector>
+#include <queue>
 #include <functional>
 
 #include "IMetricTree.h"
@@ -103,7 +104,7 @@ namespace Thesis {
 
         (*low)->innerRadius = (*pointOnInnerRadius)->innerRadius;
 
-        (*low)->left = build_tree(low + 1, median);
+        (*low)->left  = build_tree(low + 1, median);
         (*low)->right = build_tree(median, high);
 
         return *low;
@@ -136,4 +137,5 @@ namespace Thesis {
         }
     }
 }
+
 #endif //THESIS_METRICTREE_H
