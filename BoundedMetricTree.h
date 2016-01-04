@@ -6,6 +6,7 @@
 #define THESIS_BOUNDEDMETRICTREE_H
 
 #include <queue>
+#include <cmath>
 
 #include "IMetricTree.h"
 
@@ -41,12 +42,6 @@ namespace Thesis {
         T nearest_neighbor(const std::shared_ptr<Node> node, const T target) const;
 
         T furthest_neighbor(const std::shared_ptr<Node> node, const T target) const;
-
-        bool visit_node(
-                const typename Node::Distances,
-                const std::vector<double> target_ancestors,
-                const double radius
-        ) const;
 
         void search(
                 std::shared_ptr<Node> node,
@@ -95,7 +90,8 @@ namespace Thesis {
 
     template<typename T, double (*distance)(const T &, const T &)>
     std::shared_ptr<typename BoundedMetricTree<T, distance>::Node>
-    BoundedMetricTree<T, distance>::build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const {
+    BoundedMetricTree<T, distance>::build_tree(const node_itr low, const node_itr high,
+                                               std::vector<T> &ancestors) const {
         if (low == high) {
             return nullptr;
         }
@@ -103,7 +99,7 @@ namespace Thesis {
         if ((high - low) == 1) {
             const std::vector<double> empty(ancestors.size(), 0);
 
-            (*low)->left_distances.nearest  = empty;
+            (*low)->left_distances.nearest = empty;
             (*low)->left_distances.furthest = empty;
 
             (*low)->right_distances.nearest = empty;
@@ -124,11 +120,11 @@ namespace Thesis {
         ancestors.push_back((*low)->point);
         (*low)->left_distances.nearest.clear();
 
-        const auto left  = build_tree(low + 1, median, ancestors);
+        const auto left = build_tree(low + 1, median, ancestors);
 
         if (left != nullptr) {
             for (auto &point : ancestors) {
-                const T nearest  = nearest_neighbor(left, point);
+                const T nearest = nearest_neighbor(left, point);
                 const T furthest = furthest_neighbor(left, point);
 
                 (*low)->left_distances.nearest.push_back(distance((*low)->point, nearest));
@@ -137,7 +133,7 @@ namespace Thesis {
         } else {
             const std::vector<double> empty(ancestors.size(), 0);
 
-            (*low)->left_distances.nearest  = empty;
+            (*low)->left_distances.nearest = empty;
             (*low)->left_distances.furthest = empty;
         }
 
@@ -145,7 +141,7 @@ namespace Thesis {
 
         if (right != nullptr) {
             for (auto &point : ancestors) {
-                const T nearest  = nearest_neighbor(right, point);
+                const T nearest = nearest_neighbor(right, point);
                 const T furthest = furthest_neighbor(right, point);
 
                 (*low)->right_distances.nearest.push_back(distance((*low)->point, nearest));
@@ -160,7 +156,7 @@ namespace Thesis {
 
         ancestors.pop_back();
 
-        (*low)->left  = left;
+        (*low)->left = left;
         (*low)->right = right;
 
         return (*low);
@@ -211,7 +207,7 @@ namespace Thesis {
 
             const double next_distance = distance(target, next_node->point);
 
-            if (next_distance < best_distance) {
+            if (next_distance > best_distance) {
                 best_point = next_node->point;
                 best_distance = next_distance;
             }
@@ -248,37 +244,23 @@ namespace Thesis {
             this->calls++;
         }
 
-        if (node->left && visit_node(node->left_distances, ancestors, radius)) {
+        auto minLeft = TriangleUtils::maximize_minimum_triangle(node->left_distances.nearest, ancestors);
+        auto maxLeft = TriangleUtils::minimize_maximum_triangle(node->left_distances.furthest, ancestors);
+
+        if (minLeft.getRootToNode() + radius >= minLeft.getNodeToTarget() ||
+            maxLeft.getRootToNode() - radius < maxLeft.getNodeToTarget()) {
             search(node->left, inRange, target, radius, ancestors);
         }
 
-        if (node->right && visit_node(node->right_distances, ancestors, radius)) {
+        auto minRight = TriangleUtils::maximize_minimum_triangle(node->right_distances.nearest, ancestors);
+        auto maxRight = TriangleUtils::minimize_maximum_triangle(node->right_distances.furthest, ancestors);
+
+        if (minRight.getRootToNode() + radius >= minRight.getNodeToTarget() ||
+            maxRight.getRootToNode() - radius < maxRight.getNodeToTarget()) {
             search(node->right, inRange, target, radius, ancestors);
         }
 
         ancestors.pop_back();
-    }
-
-    template<typename T, double (*distance)(const T &, const T &)>
-    bool BoundedMetricTree<T, distance>::visit_node(
-            const typename Node::Distances distances,
-            const std::vector<double> target_ancestors,
-            const double radius
-    ) const {
-        if (distances.nearest.size() == 0) {
-            return false;
-        }
-        for (auto i = distances.nearest.size() - 1; i >= 0; i++) {
-            if (distances.nearest[i] <= target_ancestors[i] && distances.furthest[i] <= target_ancestors[i]) {
-                return true;
-            } else if (target_ancestors[i] <= distances.nearest[i] && target_ancestors[i] - distances.nearest[i] <= radius) {
-                return true;
-            } else if (target_ancestors[i] - distances.furthest[i] <= radius){
-                return true;
-            }
-        }
-
-        return false;
     }
 }
 
