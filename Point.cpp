@@ -28,16 +28,16 @@ unsigned long Point::size() const {
 }
 
 std::string Point::to_string() const {
-    std::string elems;
+    std::string elements;
     for (auto i = 0; i < this->elements.size(); i++) {
-        elems += std::to_string(this->elements[i]);
+        elements += std::to_string(this->elements[i]);
 
         if (i + 1 != this->elements.size()) {
-            elems += ",";
+            elements += ",";
         }
     }
 
-    return "(" + elems + ")";
+    return "(" + elements + ")";
 }
 
 double Point::euclidean_distance(const Point& a, const Point& b) {

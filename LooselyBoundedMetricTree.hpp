@@ -6,6 +6,7 @@
 #define THESIS_LOOSELYBOUNDEDMETRICTREE_HPP
 
 #include "IMetricTree.h"
+#include "TriangleUtils.hpp"
 
 namespace Thesis {
     template<typename T, double (*distance)(const T &, const T &)>
@@ -136,22 +137,22 @@ namespace Thesis {
             return;
         }
 
-        const auto minDistance = TriangleUtils::maximize_minimum_triangle_length(node->parent_distances, ancestors);
-        const auto maxDistance = TriangleUtils::minimize_maximum_triangle_length(node->parent_distances, ancestors);
+        const auto minDistance = TriangleUtils::maximize_minimum_triangle(node->parent_distances, ancestors);
+        const auto maxDistance = TriangleUtils::minimize_maximum_triangle(node->parent_distances, ancestors);
 
-        if (radius < minDistance || maxDistance <= radius) {
-            if (maxDistance <= radius) {
+        if (radius < minDistance.getNodeToTarget() || maxDistance.getNodeToTarget() <= radius) {
+            if (maxDistance.getNodeToTarget() <= radius) {
                 inRange.push_back(node->point);
             }
 
             ancestors.push_back(TriangleUtils::infinity);
-            if (maxDistance + radius >= node->left_distances.nearest &&
-                minDistance - radius < node->left_distances.furthest) {
+            if (maxDistance.getNodeToTarget() + radius >= node->left_distances.nearest &&
+                minDistance.getNodeToTarget() - radius < node->left_distances.furthest) {
                 search(node->left, inRange, target, radius, ancestors);
             }
 
-            if (maxDistance + radius >= node->right_distances.nearest &&
-                minDistance - radius < node->right_distances.furthest) {
+            if (maxDistance.getNodeToTarget() + radius >= node->right_distances.nearest &&
+                minDistance.getNodeToTarget() - radius < node->right_distances.furthest) {
                 search(node->right, inRange, target, radius, ancestors);
             }
 
