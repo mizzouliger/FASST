@@ -152,7 +152,6 @@ namespace Thesis {
 
         } else {
             const auto dist = distance(node->point, target);
-            const auto d2   = distance(target, node->point);
             this->calls++;
 
             ancestors.push_back(dist);

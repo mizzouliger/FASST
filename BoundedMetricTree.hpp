@@ -38,7 +38,7 @@ namespace Thesis {
         mutable int calls;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const;
-
+        g
         T nearest_neighbor(const std::shared_ptr<Node> node, const T target) const;
 
         T furthest_neighbor(const std::shared_ptr<Node> node, const T target) const;
@@ -237,17 +237,18 @@ namespace Thesis {
         }
 
         const auto dist = distance(target, node->point);
+        this->calls++;
+
         ancestors.push_back(dist);
 
         if (dist <= radius) {
             inRange.push_back(node->point);
-            this->calls++;
         }
 
         auto minLeft = TriangleUtils::maximize_minimum_triangle(node->left_distances.nearest, ancestors);
         auto maxLeft = TriangleUtils::minimize_maximum_triangle(node->left_distances.furthest, ancestors);
 
-        if (minLeft.getRootToNode() + radius >= minLeft.getNodeToTarget() ||
+        if (minLeft.getRootToNode() + radius >= minLeft.getNodeToTarget() &&
             maxLeft.getRootToNode() - radius < maxLeft.getNodeToTarget()) {
             search(node->left, inRange, target, radius, ancestors);
         }
@@ -255,7 +256,7 @@ namespace Thesis {
         auto minRight = TriangleUtils::maximize_minimum_triangle(node->right_distances.nearest, ancestors);
         auto maxRight = TriangleUtils::minimize_maximum_triangle(node->right_distances.furthest, ancestors);
 
-        if (minRight.getRootToNode() + radius >= minRight.getNodeToTarget() ||
+        if (minRight.getRootToNode() + radius >= minRight.getNodeToTarget() &&
             maxRight.getRootToNode() - radius < maxRight.getNodeToTarget()) {
             search(node->right, inRange, target, radius, ancestors);
         }

@@ -5,14 +5,11 @@
 #include <assert.h>
 #include <dirent.h>
 
-#include "optionparser.h"
-
 #include "Point.hpp"
 #include "IMetricTree.hpp"
 #include "MetricTree.hpp"
 #include "GatedMetricTree.hpp"
 #include "BoundedMetricTree.hpp"
-#include "LooselyBoundedMetricTree.hpp"
 
 using namespace Thesis;
 
@@ -21,20 +18,6 @@ struct result {
     int calls;
     double build_time;
     double search_time;
-};
-
-enum optionIndex {
-    INDIR,
-    OUTDIR,
-    ITERATIONS,
-    STEP
-};
-
-const option::Descriptor usage[] = {
-        {INDIR,      0, "", "input-dir", option::Arg::Optional, "--input-dir=<directory with input files>"},
-        {OUTDIR,     0, "", "out-dir",   option::Arg::Optional, "--out-dir=<directory where output files will be written>"},
-        {ITERATIONS, 0, "", "itr",       option::Arg::Optional, "--itr=<number of test runs>"},
-        {STEP,       0, "", "step",      option::Arg::Optional, "--step=<number of nodes to add to each consecutive test>"}
 };
 
 template<typename T>
@@ -53,34 +36,6 @@ double find_radius(std::vector<Point> points);
 std::size_t dim = 0;
 
 int main(int argc, char *argv[]) {
-    argc -= (argc > 0);
-    argv += (argc > 0);
-    option::Stats stats(usage, argc, argv);
-    option::Option *options = new option::Option[stats.options_max];
-    option::Option *buffer = new option::Option[stats.buffer_max];
-    option::Parser parse(usage, argc, argv, options, buffer);
-
-    if (parse.error()) {
-        return 1;
-    }
-
-    if (!options[INDIR] || !options[OUTDIR]) {
-        return 2;
-    }
-
-    std::string indir = options[INDIR].arg;
-    std::string outdir = options[OUTDIR].arg;
-
-    long iterations = 100;
-    if (options[ITERATIONS]) {
-        iterations = std::stol(options[ITERATIONS].arg);
-    }
-
-    long step_size = 10;
-    if (options[STEP]) {
-        step_size = std::stol(options[STEP].arg);
-    }
-
     time_t now = time(0);
     struct tm tstruct;
     char buf[80];
@@ -90,6 +45,26 @@ int main(int argc, char *argv[]) {
     std::cout << "Thesis -- Metric Tree Benchmarking Tests" << std::endl;
     std::cout << "Author: Seth Wiesman Date: " << buf << std::endl;
     std::cout << "----------------------------------------------" << std::endl;
+
+    std::vector<std::string> options(argv + 1, argv + argc);
+
+    if (options.size() < 2) {
+        return 1;
+    }
+
+    std::string indir = options[0];
+    std::string outdir = options[1];
+
+    long iterations = 100;
+    if (options.size() > 2) {
+        iterations = std::stol(options[2]);
+    }
+
+    long step_size = 10;
+    if (options.size() == 4) {
+        step_size = std::stol(options[3]);
+    }
+
     std::cout << "Number of iterations: " << iterations << std::endl;
     std::cout << "Step size: " << step_size << std::endl;
 
@@ -160,8 +135,6 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "Benchmarking Complete" << std::endl;
-    delete options;
-    delete buffer;
 
     return 0;
 }
