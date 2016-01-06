@@ -15,12 +15,13 @@ namespace Thesis {
                                            std::vector<double> rootToTargetLengths) {
             Triangle max(0, 0, 0);
             for (auto i = 0; i < rootToNodeLengths.size(); i++) {
-                if (!triangle_undefined(rootToNodeLengths[i], rootToTargetLengths[i])) {
-                    const auto nodeToTargetLength = std::fabs(rootToNodeLengths[i] - rootToTargetLengths[i]);
+                if (triangle_undefined(rootToNodeLengths[i], rootToTargetLengths[i])) {
+                    continue;
+                }
+                const auto nodeToTargetLength = std::fabs(rootToNodeLengths[i] - rootToTargetLengths[i]);
 
-                    if (max.getNodeToTarget() < nodeToTargetLength) {
-                        max = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
-                    }
+                if (max.getNodeToTarget() < nodeToTargetLength) {
+                    max = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
                 }
             }
 
@@ -31,13 +32,16 @@ namespace Thesis {
                                            std::vector<double> rootToTargetLengths) {
             Triangle min(infinity, infinity, infinity);
             for (auto i = 0; i < rootToNodeLengths.size(); i++) {
-                if (!triangle_undefined(rootToNodeLengths[i], rootToTargetLengths[i])) {
-                    const auto nodeToTargetLength = rootToNodeLengths[i] + rootToTargetLengths[i];
-
-                    if (nodeToTargetLength < min.getNodeToTarget()) {
-                        min = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
-                    }
+                if (triangle_undefined(rootToNodeLengths[i], rootToTargetLengths[i])) {
+                    continue;
                 }
+
+                const auto nodeToTargetLength = rootToNodeLengths[i] + rootToTargetLengths[i];
+
+                if (nodeToTargetLength < min.getNodeToTarget()) {
+                    min = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
+                }
+
             }
 
             return min;

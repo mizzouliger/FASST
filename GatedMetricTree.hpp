@@ -135,7 +135,7 @@ namespace Thesis {
         assert(minDistance.getNodeToTarget() <= d);
         assert(d <= maxDistance.getNodeToTarget());
 
-        if (radius < minDistance.getNodeToTarget() || maxDistance.getNodeToTarget() <= radius) {
+        if (radius <= minDistance.getNodeToTarget() || maxDistance.getNodeToTarget() <= radius) {
 
             if (maxDistance.getNodeToTarget() <= radius) {
                 inRange.push_back(node->point);
@@ -152,6 +152,7 @@ namespace Thesis {
 
         } else {
             const auto dist = distance(node->point, target);
+            const auto d2   = distance(target, node->point);
             this->calls++;
 
             ancestors.push_back(dist);

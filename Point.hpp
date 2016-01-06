@@ -24,7 +24,7 @@ public:
 private:
     std::vector<double> elements;
 
-    static void check_size(Point const& a, Point const& b, std::string msg);
+    static inline void check_size(Point const& a, Point const& b, std::string msg);
 };
 
 namespace std {

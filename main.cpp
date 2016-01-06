@@ -47,7 +47,9 @@ void verify_results(struct result control, struct result variable);
 
 void display_progress_bar(double progress);
 
-const auto dim = 2;
+double find_radius(std::vector<Point> points);
+
+std::size_t dim = 0;
 
 int main(int argc, char *argv[]) {
     argc -= (argc > 0);
@@ -93,7 +95,6 @@ int main(int argc, char *argv[]) {
 
     const auto tree_tests = {
             benchmark<GatedMetricTree<Point, Point::euclidean_distance>>,
-//            benchmark<LooselyBoundedMetricTree<Point, Point::euclidean_distance>>,
             benchmark<BoundedMetricTree<Point, Point::euclidean_distance>>
     };
 
@@ -123,13 +124,14 @@ int main(int argc, char *argv[]) {
 
             auto points = read_points(indir + "/" + file, static_cast<std::size_t>(i));
 
-            auto metric_tree_result = benchmark<MetricTree<Point, Point::euclidean_distance>>(points, 1.0);
+            auto radius = find_radius(points);
+
+            auto metric_tree_result = benchmark<MetricTree<Point, Point::euclidean_distance>>(points, radius);
 
             std::vector<result> results = {metric_tree_result};
 
             for (auto tree_test : tree_tests) {
-                points = read_points(indir + "/" + file, static_cast<std::size_t>(i));
-                auto test_result = tree_test(points, 1.0);
+                auto test_result = tree_test(points, radius);
                 verify_results(metric_tree_result, test_result);
                 results.push_back(test_result);
             }
@@ -153,7 +155,7 @@ int main(int argc, char *argv[]) {
         build_file.close();
         search_file.close();
 
-        std::cout << std::endl;
+        std::cout << std::endl << std::endl;
     }
 
     std::cout << "Benchmarking Complete" << std::endl;
@@ -223,6 +225,9 @@ std::vector<Point> read_points(std::string filename, std::size_t len) {
 
         points.push_back(Point(elements));
     }
+
+    dim = points[0].size();
+
     file.close();
     return points;
 }
@@ -241,7 +246,8 @@ struct result benchmark(std::vector<Point> points, const double radius) {
     const auto end_search = std::clock();
 
     for (auto &point : results) {
-        assert(Point::euclidean_distance(point, Point::origin(dim)) <= radius);
+        const auto distance = Point::euclidean_distance(point, Point::origin(dim));
+        assert(distance <= radius);
     }
 
     return {
@@ -260,4 +266,23 @@ void verify_results(struct result control, struct result variable) {
         const auto location = std::find(variable.result.begin(), variable.result.end(), point);
         assert(location != variable.result.end());
     }
+}
+
+double find_radius(std::vector<Point> points) {
+    MetricTree<Point, Point::euclidean_distance> tree(points);
+
+    double radius = 10.0;
+    auto result = tree.search(Point::origin(dim), radius);
+
+    while (result.size() < 4 || result.size() > 6) {
+        if (result.size() < 4) {
+            radius = radius + (radius / 2);
+        } else {
+            radius = radius - (radius / 2);
+        }
+
+        result = tree.search(Point::origin(dim), radius);
+    }
+
+    return radius;
 }
