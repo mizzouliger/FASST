@@ -44,7 +44,7 @@ std::vector<Point> read_points(std::string filename, std::size_t len);
 
 std::vector<std::string> get_files(std::string directory);
 
-void verify_results(struct result control, struct result variable) {}
+void verify_results(struct result control, struct result variable);
 
 void display_progress_bar(double progress);
 
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
 
     const auto tree_tests = {
             benchmark<GatedMetricTree<Point, Point::euclidean_distance>>,
-            benchmark<LooselyBoundedMetricTree<Point, Point::euclidean_distance>>,
+//            benchmark<LooselyBoundedMetricTree<Point, Point::euclidean_distance>>,
             benchmark<BoundedMetricTree<Point, Point::euclidean_distance>>
     };
 
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
     unsigned long file_count = 1;
     for (auto file : files) {
 
-        std::cout << "File " << file_count << " / " << files.size() << " : " << file << std::endl;
+        std::cout << "File " << file_count++ << " / " << files.size() << " : " << file << std::endl;
 
         std::ofstream output_file;
         output_file.open(outdir + "/" + file);
@@ -138,8 +138,9 @@ int main(int argc, char *argv[]) {
         output_file.close();
 
         std::cout << std::endl;
-    }
+   }
 
+    std::cout << "Benchmarking Complete" << std::endl;
     delete options;
     delete buffer;
 
@@ -233,4 +234,14 @@ struct result benchmark(std::vector<Point> points, const double radius) {
             (end_build - start_build) / (double) (CLOCKS_PER_SEC / 1000),
             (end_search - start_search) / (double) (CLOCKS_PER_SEC / 1000)
     };
+}
+
+void verify_results(struct result control, struct result variable) {
+    
+    assert(control.result.size() == variable.result.size());
+
+    for (auto& point : control.result) {
+        const auto location = std::find(variable.result.begin(), variable.result.end(), point);
+        assert(location != variable.result.end());
+    }
 }

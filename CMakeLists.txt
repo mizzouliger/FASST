@@ -10,6 +10,7 @@ set(SOURCE_FILES
         ControlTree.h
         MetricTree.h
         GatedMetricTree.h
+        LooselyBoundedMetricTree.hpp
         BoundedMetricTree.h
         TriangleUtils.hpp TriangleUtils.cpp)
 
