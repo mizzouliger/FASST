@@ -38,7 +38,7 @@ namespace Thesis {
         mutable int calls;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const;
-        g
+
         T nearest_neighbor(const std::shared_ptr<Node> node, const T target) const;
 
         T furthest_neighbor(const std::shared_ptr<Node> node, const T target) const;
