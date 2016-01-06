@@ -12,6 +12,7 @@
 #include "MetricTree.hpp"
 #include "GatedMetricTree.hpp"
 #include "BoundedMetricTree.hpp"
+#include "LooselyBoundedMetricTree.hpp"
 
 using namespace Thesis;
 

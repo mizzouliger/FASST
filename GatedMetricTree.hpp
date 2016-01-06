@@ -130,10 +130,10 @@ namespace Thesis {
         //This distance calculation is just for running the asserts and testing
         //It is not used in any logic and so it is not counted towards distance
         //calls
-        const auto d = distance(target, node->point);
+        //const auto d = distance(target, node->point);
 
-        assert(minDistance.getNodeToTarget() <= d);
-        assert(d <= maxDistance.getNodeToTarget());
+        //assert(minDistance.getNodeToTarget() <= d);
+        //assert(d <= maxDistance.getNodeToTarget());
 
         if (radius <= minDistance.getNodeToTarget() || maxDistance.getNodeToTarget() <= radius) {
 
