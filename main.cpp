@@ -7,12 +7,11 @@
 
 #include "optionparser.h"
 
-#include "Point.h"
-#include "IMetricTree.h"
-#include "MetricTree.h"
-#include "GatedMetricTree.h"
-#include "LooselyBoundedMetricTree.hpp"
-#include "BoundedMetricTree.h"
+#include "Point.hpp"
+#include "IMetricTree.hpp"
+#include "MetricTree.hpp"
+#include "GatedMetricTree.hpp"
+#include "BoundedMetricTree.hpp"
 
 using namespace Thesis;
 
@@ -54,8 +53,8 @@ int main(int argc, char *argv[]) {
     argc -= (argc > 0);
     argv += (argc > 0);
     option::Stats stats(usage, argc, argv);
-    option::Option* options = new option::Option[stats.options_max];
-    option::Option* buffer  = new option::Option[stats.buffer_max];
+    option::Option *options = new option::Option[stats.options_max];
+    option::Option *buffer = new option::Option[stats.buffer_max];
     option::Parser parse(usage, argc, argv, options, buffer);
 
     if (parse.error()) {
@@ -79,9 +78,9 @@ int main(int argc, char *argv[]) {
         step_size = std::stol(options[STEP].arg);
     }
 
-    time_t     now = time(0);
-    struct tm  tstruct;
-    char       buf[80];
+    time_t now = time(0);
+    struct tm tstruct;
+    char buf[80];
     tstruct = *localtime(&now);
     strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
 
@@ -110,8 +109,15 @@ int main(int argc, char *argv[]) {
 
         std::cout << "File " << file_count++ << " / " << files.size() << " : " << file << std::endl;
 
-        std::ofstream output_file;
-        output_file.open(outdir + "/" + file);
+        std::ofstream distance_file;
+        distance_file.open(outdir + "/distance_calls/" + file);
+
+        std::ofstream build_file;
+        build_file.open(outdir + "/build_time/" + file);
+
+        std::ofstream search_file;
+        search_file.open(outdir + "/search_time/" + file);
+
         for (auto i = step_size; i <= iterations; i += step_size) {
             display_progress_bar(static_cast<double>(i) / static_cast<double>(iterations));
 
@@ -128,17 +134,27 @@ int main(int argc, char *argv[]) {
                 results.push_back(test_result);
             }
 
-            output_file << i << "\t";
+            distance_file << i << "\t";
+            build_file << i << "\t";
+            search_file << i << "\t";
+
             for (auto result : results) {
-                output_file << result.calls << "\t";
+                distance_file << result.calls << "\t";
+                build_file << result.build_time << "\t";
+                search_file << result.search_time << "\t";
             }
-            output_file << "\n";
+
+            distance_file << "\n";
+            build_file << "\n";
+            search_file << "\n";
         }
 
-        output_file.close();
+        distance_file.close();
+        build_file.close();
+        search_file.close();
 
         std::cout << std::endl;
-   }
+    }
 
     std::cout << "Benchmarking Complete" << std::endl;
     delete options;
@@ -172,15 +188,15 @@ std::vector<std::string> get_files(std::string directory) {
 
     std::vector<std::string> files;
 
-    if ((dir = opendir (directory.c_str())) != NULL) {
-        while ((ent = readdir (dir)) != NULL) {
+    if ((dir = opendir(directory.c_str())) != NULL) {
+        while ((ent = readdir(dir)) != NULL) {
             std::string filename = ent->d_name;
             if (filename == "." || filename == "..") {
                 continue;
             }
             files.push_back(ent->d_name);
         }
-        closedir (dir);
+        closedir(dir);
     } else {
         throw std::domain_error("Unable to open directory");
     }
@@ -237,10 +253,10 @@ struct result benchmark(std::vector<Point> points, const double radius) {
 }
 
 void verify_results(struct result control, struct result variable) {
-    
+
     assert(control.result.size() == variable.result.size());
 
-    for (auto& point : control.result) {
+    for (auto &point : control.result) {
         const auto location = std::find(variable.result.begin(), variable.result.end(), point);
         assert(location != variable.result.end());
     }

@@ -7,7 +7,7 @@
 #include <cmath>
 #include <functional>
 
-#include "Point.h"
+#include "Point.hpp"
 
 Point::Point(std::vector<double> elements): elements(elements) {}
 

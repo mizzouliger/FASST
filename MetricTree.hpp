@@ -9,7 +9,7 @@
 #include <queue>
 #include <functional>
 
-#include "IMetricTree.h"
+#include "IMetricTree.hpp"
 
 namespace Thesis {
 

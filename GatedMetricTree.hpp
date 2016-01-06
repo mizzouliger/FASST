@@ -5,7 +5,7 @@
 #include <functional>
 
 #include "TriangleUtils.hpp"
-#include "IMetricTree.h"
+#include "IMetricTree.hpp"
 
 namespace Thesis {
     template<typename T, double(*distance)(const T &, const T &)>

@@ -5,7 +5,7 @@
 #ifndef THESIS_LOOSELYBOUNDEDMETRICTREE_HPP
 #define THESIS_LOOSELYBOUNDEDMETRICTREE_HPP
 
-#include "IMetricTree.h"
+#include "IMetricTree.hpp"
 #include "TriangleUtils.hpp"
 
 namespace Thesis {
