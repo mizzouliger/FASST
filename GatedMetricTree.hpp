@@ -138,18 +138,18 @@ namespace Thesis {
         const auto minDistance = TriangleUtils::maximize_minimum_triangle(node->parent_distances, ancestors);
         const auto maxDistance = TriangleUtils::minimize_maximum_triangle(node->parent_distances, ancestors);
 
-        if (radius <= minDistance.nodeToTarget || maxDistance.nodeToTarget <= radius) {
+        if (radius <= minDistance || maxDistance <= radius) {
 
-            if (maxDistance.nodeToTarget <= radius) {
+            if (maxDistance <= radius) {
                 inRange.push_back(node->point);
             }
 
             ancestors.push_back(TriangleUtils::infinity);
-            if (minDistance.nodeToTarget - radius <= node->innerRadius) {
+            if (minDistance - radius <= node->innerRadius) {
                 search(node->left, inRange, target, radius, ancestors);
             }
 
-            if (maxDistance.nodeToTarget + radius >= node->outerRadius) {
+            if (maxDistance + radius >= node->outerRadius) {
                 search(node->right, inRange, target, radius, ancestors);
             }
 

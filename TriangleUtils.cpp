@@ -11,26 +11,26 @@ namespace Thesis {
             return side1 == infinity || side2 == infinity;
         }
 
-        Triangle maximize_minimum_triangle(std::vector<double> rootToNodeLengths,
+        double maximize_minimum_triangle(std::vector<double> rootToNodeLengths,
                                            std::vector<double> rootToTargetLengths) {
-            Triangle max(0, 0, 0);
+            double max = 0;
             for (auto i = 0; i < rootToNodeLengths.size(); i++) {
                 if (triangle_undefined(rootToNodeLengths[i], rootToTargetLengths[i])) {
                     continue;
                 }
                 const auto nodeToTargetLength = std::fabs(rootToNodeLengths[i] - rootToTargetLengths[i]);
 
-                if (max.nodeToTarget < nodeToTargetLength) {
-                    max = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
+                if (max < nodeToTargetLength) {
+                    max = nodeToTargetLength;
                 }
             }
 
             return max;
         }
 
-        Triangle minimize_maximum_triangle(std::vector<double> rootToNodeLengths,
+        double minimize_maximum_triangle(std::vector<double> rootToNodeLengths,
                                            std::vector<double> rootToTargetLengths) {
-            Triangle min(infinity, infinity, infinity);
+            double min = infinity;
             for (auto i = 0; i < rootToNodeLengths.size(); i++) {
                 if (triangle_undefined(rootToNodeLengths[i], rootToTargetLengths[i])) {
                     continue;
@@ -38,8 +38,8 @@ namespace Thesis {
 
                 const auto nodeToTargetLength = rootToNodeLengths[i] + rootToTargetLengths[i];
 
-                if (nodeToTargetLength < min.nodeToTarget) {
-                    min = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
+                if (nodeToTargetLength < min) {
+                    min = nodeToTargetLength;
                 }
 
             }

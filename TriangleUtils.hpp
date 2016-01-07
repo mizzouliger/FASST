@@ -11,20 +11,12 @@
 namespace Thesis {
     namespace TriangleUtils {
 
-        struct Triangle {
-            double rootToTarget;
-            double rootToNode;
-            double nodeToTarget;
-
-            Triangle(double a, double b, double c) : rootToTarget(a), rootToNode(b), nodeToTarget(c) {}
-        };
-
         static constexpr double infinity = std::numeric_limits<double>::max();
 
-        Triangle maximize_minimum_triangle(std::vector<double> rootToNodeLengths,
+        double maximize_minimum_triangle(std::vector<double> rootToNodeLengths,
                                            std::vector<double> rootToTargetLengths);
 
-        Triangle minimize_maximum_triangle(std::vector<double> rootToNodeLengths,
+        double minimize_maximum_triangle(std::vector<double> rootToNodeLengths,
                                            std::vector<double> rootToTargetLengths);
     }
 }
