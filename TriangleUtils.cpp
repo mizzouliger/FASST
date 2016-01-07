@@ -7,7 +7,7 @@
 
 namespace Thesis {
     namespace TriangleUtils {
-        bool triangle_undefined(double side1, double side2) {
+        inline bool triangle_undefined(double side1, double side2) {
             return side1 == infinity || side2 == infinity;
         }
 
@@ -20,7 +20,7 @@ namespace Thesis {
                 }
                 const auto nodeToTargetLength = std::fabs(rootToNodeLengths[i] - rootToTargetLengths[i]);
 
-                if (max.getNodeToTarget() < nodeToTargetLength) {
+                if (max.nodeToTarget < nodeToTargetLength) {
                     max = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
                 }
             }
@@ -38,7 +38,7 @@ namespace Thesis {
 
                 const auto nodeToTargetLength = rootToNodeLengths[i] + rootToTargetLengths[i];
 
-                if (nodeToTargetLength < min.getNodeToTarget()) {
+                if (nodeToTargetLength < min.nodeToTarget) {
                     min = {rootToTargetLengths[i], rootToNodeLengths[i], nodeToTargetLength};
                 }
 

@@ -8,8 +8,13 @@
 #include "Point.hpp"
 #include "IMetricTree.hpp"
 #include "MetricTree.hpp"
-#include "GatedMetricTree.hpp"
 #include "BoundedMetricTree.hpp"
+<<<<<<< Updated upstream
+=======
+#include "GatedMetricTree.hpp"
+#include "LooselyBoundedMetricTree.hpp"
+#include "BoundedGatedTree.hpp"
+>>>>>>> Stashed changes
 
 using namespace Thesis;
 

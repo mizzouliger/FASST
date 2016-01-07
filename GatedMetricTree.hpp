@@ -135,18 +135,18 @@ namespace Thesis {
         //assert(minDistance.getNodeToTarget() <= d);
         //assert(d <= maxDistance.getNodeToTarget());
 
-        if (radius <= minDistance.getNodeToTarget() || maxDistance.getNodeToTarget() <= radius) {
+        if (radius <= minDistance.nodeToTarget || maxDistance.nodeToTarget <= radius) {
 
-            if (maxDistance.getNodeToTarget() <= radius) {
+            if (maxDistance.nodeToTarget <= radius) {
                 inRange.push_back(node->point);
             }
 
             ancestors.push_back(TriangleUtils::infinity);
-            if (minDistance.getNodeToTarget() - radius <= node->innerRadius) {
+            if (minDistance.nodeToTarget - radius <= node->innerRadius) {
                 search(node->left, inRange, target, radius, ancestors);
             }
 
-            if (maxDistance.getNodeToTarget() + radius >= node->outerRadius) {
+            if (maxDistance.nodeToTarget + radius >= node->outerRadius) {
                 search(node->right, inRange, target, radius, ancestors);
             }
 
