@@ -11,8 +11,7 @@ set(SOURCE_FILES
         ControlTree.hpp
         MetricTree.hpp
         GatedMetricTree.hpp
-        LooselyBoundedMetricTree.hpp
         BoundedMetricTree.hpp
-        TriangleUtils.hpp TriangleUtils.cpp)
+        TriangleUtils.hpp TriangleUtils.cpp BoundGatedTree.hpp)
 
 add_executable(Thesis ${SOURCE_FILES})

@@ -36,6 +36,7 @@ namespace Thesis {
 
         std::shared_ptr<Node> root;
         mutable int calls;
+        mutable int nodes_visited;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const;
 
@@ -63,6 +64,8 @@ namespace Thesis {
         std::vector<T> search(const T &target, const double radius) const;
 
         int getCalls() const;
+
+        int getNodesVisited() const;
     };
 
     template<typename T, double (*distance)(const T &, const T &)>
@@ -82,6 +85,7 @@ namespace Thesis {
     std::vector<T> BoundedMetricTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
+        this->nodes_visited = 0;
 
         std::vector<double> ancestors;
 
@@ -92,6 +96,11 @@ namespace Thesis {
     template<typename T, double (*distance)(const T &, const T &)>
     int BoundedMetricTree<T, distance>::getCalls() const {
         return this->calls;
+    }
+
+    template<typename T, double(*distance)(const T&, const T&)>
+    int BoundedMetricTree<T, distance>::getNodesVisited() const {
+        return this->nodes_visited;
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
@@ -240,6 +249,8 @@ namespace Thesis {
         if (node == nullptr) {
             return;
         }
+
+        this->nodes_visited++;
 
         const auto dist = distance(target, node->point);
         this->calls++;

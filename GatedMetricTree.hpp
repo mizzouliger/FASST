@@ -17,6 +17,8 @@ namespace Thesis {
 
         int getCalls() const;
 
+        int getNodesVisited() const;
+
     private:
         struct Node {
             T point;
@@ -37,6 +39,7 @@ namespace Thesis {
         using node_itr = typename std::vector<std::shared_ptr<typename GatedMetricTree<T, distance>::Node>>::iterator;
 
         mutable int calls;
+        mutable int nodes_visited;
         std::shared_ptr<Node> root;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
@@ -51,7 +54,7 @@ namespace Thesis {
     };
 
     template<typename T, double(*distance)(const T &, const T &)>
-    GatedMetricTree<T, distance>::GatedMetricTree(std::vector<T> points) {
+    GatedMetricTree<T, distance>::GatedMetricTree(std::vector<T> points) : calls(0), nodes_visited(0) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -66,6 +69,7 @@ namespace Thesis {
     std::vector<T> GatedMetricTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
+        this->nodes_visited = 0;
 
         search(root, inRange, target, radius, {TriangleUtils::infinity});
         return inRange;
@@ -74,6 +78,11 @@ namespace Thesis {
     template<typename T, double(*distance)(const T &, const T &)>
     int GatedMetricTree<T, distance>::getCalls() const {
         return this->calls;
+    }
+
+    template<typename T, double(*distance)(const T&, const T&)>
+    int GatedMetricTree<T, distance>::getNodesVisited() const {
+        return this->nodes_visited;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
@@ -124,16 +133,10 @@ namespace Thesis {
             return;
         }
 
+        this->nodes_visited++;
+
         const auto minDistance = TriangleUtils::maximize_minimum_triangle(node->parent_distances, ancestors);
         const auto maxDistance = TriangleUtils::minimize_maximum_triangle(node->parent_distances, ancestors);
-
-        //This distance calculation is just for running the asserts and testing
-        //It is not used in any logic and so it is not counted towards distance
-        //calls
-        //const auto d = distance(target, node->point);
-
-        //assert(minDistance.getNodeToTarget() <= d);
-        //assert(d <= maxDistance.getNodeToTarget());
 
         if (radius <= minDistance.nodeToTarget || maxDistance.nodeToTarget <= radius) {
 

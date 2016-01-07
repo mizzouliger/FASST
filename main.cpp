@@ -6,21 +6,19 @@
 #include <dirent.h>
 
 #include "Point.hpp"
+
 #include "IMetricTree.hpp"
 #include "MetricTree.hpp"
 #include "BoundedMetricTree.hpp"
-<<<<<<< Updated upstream
-=======
 #include "GatedMetricTree.hpp"
-#include "LooselyBoundedMetricTree.hpp"
-#include "BoundedGatedTree.hpp"
->>>>>>> Stashed changes
+#include "BoundGatedTree.hpp"
 
 using namespace Thesis;
 
 struct result {
     std::vector<Point> result;
     int calls;
+    int nodes_visited;
     double build_time;
     double search_time;
 };
@@ -76,7 +74,8 @@ int main(int argc, char *argv[]) {
 
     const auto tree_tests = {
             benchmark<GatedMetricTree<Point, Point::euclidean_distance>>,
-            benchmark<BoundedMetricTree<Point, Point::euclidean_distance>>
+            benchmark<BoundedMetricTree<Point, Point::euclidean_distance>>,
+            benchmark<BoundGatedTree<Point, Point::euclidean_distance>>
     };
 
     std::cout << "Number of trees: " << tree_tests.size() + 1 << std::endl;
@@ -93,6 +92,9 @@ int main(int argc, char *argv[]) {
 
         std::ofstream distance_file;
         distance_file.open(outdir + "/distance_calls/" + file);
+
+        std::ofstream node_visited_file;
+        node_visited_file.open(outdir + "/node_visited/" + file);
 
         std::ofstream build_file;
         build_file.open(outdir + "/build_time/" + file);
@@ -118,21 +120,25 @@ int main(int argc, char *argv[]) {
             }
 
             distance_file << i << "\t";
+            node_visited_file << i << "\t";
             build_file << i << "\t";
             search_file << i << "\t";
 
             for (auto result : results) {
                 distance_file << result.calls << "\t";
+                node_visited_file << result.nodes_visited << "\t";
                 build_file << result.build_time << "\t";
                 search_file << result.search_time << "\t";
             }
 
             distance_file << "\n";
+            node_visited_file << "\n";
             build_file << "\n";
             search_file << "\n";
         }
 
         distance_file.close();
+        node_visited_file.close();
         build_file.close();
         search_file.close();
 
@@ -232,6 +238,7 @@ struct result benchmark(std::vector<Point> points, const double radius) {
     return {
             results,
             tree->getCalls(),
+            tree->getNodesVisited(),
             (end_build - start_build) / (double) (CLOCKS_PER_SEC / 1000),
             (end_search - start_search) / (double) (CLOCKS_PER_SEC / 1000)
     };

@@ -22,6 +22,7 @@ namespace Thesis {
 
         int getCalls() const;
 
+        int getNodesVisited() const;
     private:
         struct Node {
             T point;
@@ -38,6 +39,7 @@ namespace Thesis {
         using node_itr = typename std::vector<std::shared_ptr<typename MetricTree<T, distance>::Node>>::iterator;
 
         mutable int calls;
+        mutable int nodes_visited;
         std::shared_ptr<Node> root;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
@@ -51,7 +53,7 @@ namespace Thesis {
     };
 
     template<typename T, double(*distance)(const T &, const T &)>
-    MetricTree<T, distance>::MetricTree(std::vector<T> points) : calls(0) {
+    MetricTree<T, distance>::MetricTree(std::vector<T> points) : calls(0), nodes_visited(0) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -66,10 +68,16 @@ namespace Thesis {
         return this->calls;
     }
 
+    template<typename T, double(*distance)(const T&, const T&)>
+    int MetricTree<T, distance>::getNodesVisited() const {
+        return this->nodes_visited;
+    }
+
     template<typename T, double(*distance)(const T &, const T &)>
     std::vector<T> MetricTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
+        this->nodes_visited = 0;
 
         search(root, inRange, target, radius);
         return inRange;
@@ -120,6 +128,8 @@ namespace Thesis {
         if (node == nullptr) {
             return;
         }
+
+        this->nodes_visited++;
 
         const auto dist = distance(node->point, target);
         this->calls++;

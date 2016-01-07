@@ -14,6 +14,8 @@ namespace Thesis {
         virtual std::vector<T> search(const T &target, double radius) const = 0;
 
         virtual int getCalls() const = 0;
+
+        virtual int getNodesVisited() const = 0;
     };
 }
 
