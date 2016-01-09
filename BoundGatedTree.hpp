@@ -110,14 +110,9 @@ namespace Thesis {
             return nullptr;
         }
 
+        (*low)->left_distances.nearest.clear();
+
         if ((high - low) == 1) {
-            const std::vector<double> empty(ancestors.size(), 0);
-
-            (*low)->left_distances.nearest  = empty;
-            (*low)->left_distances.furthest = empty;
-
-            (*low)->right_distances.nearest = empty;
-            (*low)->right_distances.furthest = empty;
             return *low;
         }
 
@@ -134,38 +129,25 @@ namespace Thesis {
 
         ancestors.push_back((*low)->point);
 
-        (*low)->left  = build_tree(low + 1, median, ancestors);
-
-        if ((*low)->left != nullptr) {
-            for (auto &point : ancestors) {
-                const T nearest  = nearest_neighbor((*low)->left, point);
-                const T furthest = furthest_neighbor((*low)->left, point);
-
-                (*low)->left_distances.nearest.push_back(distance((*low)->point, nearest));
-                (*low)->left_distances.furthest.push_back(distance((*low)->point, furthest));
-            }
-        } else {
-            const std::vector<double> empty(ancestors.size(), 0);
-
-            (*low)->left_distances.nearest  = empty;
-            (*low)->left_distances.furthest = empty;
-        }
-
+        (*low)->left = build_tree(low + 1, median, ancestors);
         (*low)->right = build_tree(median, high, ancestors);
 
-        if ((*low)->right != nullptr) {
-            for (auto &point : ancestors) {
+        for (auto &point : ancestors) {
+            if ((*low)->left != nullptr) {
+                const T nearest = nearest_neighbor((*low)->left, point);
+                const T furthest = furthest_neighbor((*low)->left, point);
+
+                (*low)->left_distances.nearest.push_back(distance(point, nearest));
+                (*low)->left_distances.furthest.push_back(distance(point, furthest));
+            }
+
+            if ((*low)->right != nullptr) {
                 const T nearest  = nearest_neighbor((*low)->right, point);
                 const T furthest = furthest_neighbor((*low)->right, point);
 
-                (*low)->right_distances.nearest.push_back(distance((*low)->point, nearest));
-                (*low)->right_distances.furthest.push_back(distance((*low)->point, furthest));
+                (*low)->right_distances.nearest.push_back(distance(point, nearest));
+                (*low)->right_distances.furthest.push_back(distance(point, furthest));
             }
-        } else {
-            const std::vector<double> empty(ancestors.size(), 0);
-
-            (*low)->right_distances.nearest = empty;
-            (*low)->right_distances.furthest = empty;
         }
 
         ancestors.pop_back();
@@ -218,7 +200,7 @@ namespace Thesis {
 
             const double next_distance = distance(target, next_node->point);
 
-            if (next_distance < best_distance) {
+            if (next_distance > best_distance) {
                 best_point = next_node->point;
                 best_distance = next_distance;
             }

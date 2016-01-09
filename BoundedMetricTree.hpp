@@ -110,14 +110,9 @@ namespace Thesis {
             return nullptr;
         }
 
+        (*low)->left_distances.nearest.clear();
+
         if ((high - low) == 1) {
-            const std::vector<double> empty(ancestors.size(), 0);
-
-            (*low)->left_distances.nearest  = empty;
-            (*low)->left_distances.furthest = empty;
-
-            (*low)->right_distances.nearest = empty;
-            (*low)->right_distances.furthest = empty;
             return *low;
         }
 
@@ -132,46 +127,29 @@ namespace Thesis {
         });
 
         ancestors.push_back((*low)->point);
-        (*low)->left_distances.nearest.clear();
 
-        const auto left  = build_tree(low + 1, median, ancestors);
+        (*low)->left = build_tree(low + 1, median, ancestors);
+        (*low)->right = build_tree(median, high, ancestors);
 
-        if (left != nullptr) {
-            for (auto &point : ancestors) {
-                const T nearest  = nearest_neighbor(left, point);
-                const T furthest = furthest_neighbor(left, point);
+        for (auto &point : ancestors) {
+            if ((*low)->left != nullptr) {
+                const T nearest = nearest_neighbor((*low)->left, point);
+                const T furthest = furthest_neighbor((*low)->left, point);
 
-                (*low)->left_distances.nearest.push_back(distance((*low)->point, nearest));
-                (*low)->left_distances.furthest.push_back(distance((*low)->point, furthest));
+                (*low)->left_distances.nearest.push_back(distance(point, nearest));
+                (*low)->left_distances.furthest.push_back(distance(point, furthest));
             }
-        } else {
-            const std::vector<double> empty(ancestors.size(), 0);
 
-            (*low)->left_distances.nearest  = empty;
-            (*low)->left_distances.furthest = empty;
-        }
+            if ((*low)->right != nullptr) {
+                const T nearest  = nearest_neighbor((*low)->right, point);
+                const T furthest = furthest_neighbor((*low)->right, point);
 
-        const auto right = build_tree(median, high, ancestors);
-
-        if (right != nullptr) {
-            for (auto &point : ancestors) {
-                const T nearest  = nearest_neighbor(right, point);
-                const T furthest = furthest_neighbor(right, point);
-
-                (*low)->right_distances.nearest.push_back(distance((*low)->point, nearest));
-                (*low)->right_distances.furthest.push_back(distance((*low)->point, furthest));
+                (*low)->right_distances.nearest.push_back(distance(point, nearest));
+                (*low)->right_distances.furthest.push_back(distance(point, furthest));
             }
-        } else {
-            const std::vector<double> empty(ancestors.size(), 0);
-
-            (*low)->right_distances.nearest = empty;
-            (*low)->right_distances.furthest = empty;
         }
 
         ancestors.pop_back();
-
-        (*low)->left  = left;
-        (*low)->right = right;
 
         return (*low);
     }
@@ -195,11 +173,11 @@ namespace Thesis {
                 best_distance = next_distance;
             }
 
-            if (next_node->left) {
+            if (next_node->left != nullptr) {
                 nodes.push(next_node->left);
             }
 
-            if (next_node->right) {
+            if (next_node->right != nullptr) {
                 nodes.push(next_node->right);
             }
         }
@@ -221,16 +199,16 @@ namespace Thesis {
 
             const double next_distance = distance(target, next_node->point);
 
-            if (next_distance < best_distance) {
+            if (next_distance > best_distance) {
                 best_point = next_node->point;
                 best_distance = next_distance;
             }
 
-            if (next_node->left) {
+            if (next_node->left != nullptr) {
                 nodes.push(next_node->left);
             }
 
-            if (next_node->right) {
+            if (next_node->right != nullptr) {
                 nodes.push(next_node->right);
             }
         }
@@ -282,7 +260,7 @@ namespace Thesis {
         for (auto i = 0; i < distances.nearest.size(); i++) {
             if (ancestors[i] < distances.nearest[i] && ancestors[i] + radius < distances.nearest[i]) {
                 return false;
-            } else if (distances.furthest[i] < ancestors[i] && distances.furthest[i] + radius < ancestors[i]){
+            } else if (distances.furthest[i] < ancestors[i] && ancestors[i] - radius > distances.furthest[i]){
                 return false;
             }
         }
