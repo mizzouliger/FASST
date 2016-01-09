@@ -4,6 +4,7 @@
 #include <sstream>
 #include <assert.h>
 #include <dirent.h>
+#include <future>
 
 #include "Point.hpp"
 
@@ -109,17 +110,27 @@ int main(int argc, char *argv[]) {
 
             auto radius = find_radius(points);
 
-            auto metric_tree_result = benchmark<MetricTree<Point, Point::euclidean_distance>>(points, radius);
+            auto metric_tree_future = std::async(std::launch::async, [&points, radius]() {
+                return benchmark<MetricTree<Point, Point::euclidean_distance>>(points, radius);
+            });
 
-            std::vector<result> results = {metric_tree_result};
-
+            std::vector<decltype(metric_tree_future)> futures;
+            futures.reserve(tree_tests.size());
             for (auto tree_test : tree_tests) {
-                auto test_result = tree_test(points, radius);
-                verify_results(metric_tree_result, test_result);
+                futures.push_back(std::async(std::launch::async, [tree_test, &points, radius]() {
+                    return tree_test(points, radius);
+                }));
+            }
+
+            std::vector<result> results = {metric_tree_future.get()};
+
+            for (auto& future : futures) {
+                auto test_result = future.get();
+                verify_results(results[0], test_result);
                 results.push_back(test_result);
             }
 
-            distance_file << i << "\t";
+            distance_file << i << "\t" << results[0].result.size() << "\t";
             node_visited_file << i << "\t";
             build_file << i << "\t";
             search_file << i << "\t";
