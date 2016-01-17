@@ -12,7 +12,7 @@
 
 namespace Thesis {
     template<typename T, double (*distance)(const T &, const T &)>
-    class BoundGatedTree : public IMetricTree<T, distance> {
+    class FasstTree : public IMetricTree<T, distance> {
         struct Node {
             struct Distances {
                 std::vector<double> nearest;
@@ -32,7 +32,7 @@ namespace Thesis {
             Node(T point) : point(point) { }
         };
 
-        using node_itr = typename std::vector<std::shared_ptr<typename BoundGatedTree<T, distance>::Node>>::iterator;
+        using node_itr = typename std::vector<std::shared_ptr<typename FasstTree<T, distance>::Node>>::iterator;
 
         std::shared_ptr<Node> root;
         mutable int calls;
@@ -59,7 +59,7 @@ namespace Thesis {
         ) const;
 
     public:
-        BoundGatedTree(std::vector<T> points);
+        FasstTree(std::vector<T> points);
 
         std::vector<T> search(const T &target, const double radius) const;
 
@@ -69,7 +69,7 @@ namespace Thesis {
     };
 
     template<typename T, double (*distance)(const T &, const T &)>
-    BoundGatedTree<T, distance>::BoundGatedTree(std::vector<T> points) : calls(0) {
+    FasstTree<T, distance>::FasstTree(std::vector<T> points) : calls(0) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -82,7 +82,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    std::vector<T> BoundGatedTree<T, distance>::search(const T &target, double radius) const {
+    std::vector<T> FasstTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
         this->nodes_visited = 0;
@@ -94,18 +94,18 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    int BoundGatedTree<T, distance>::getCalls() const {
+    int FasstTree<T, distance>::getCalls() const {
         return this->calls;
     }
 
     template<typename T, double(*distance)(const T&, const T&)>
-    int BoundGatedTree<T, distance>::getNodesVisited() const {
+    int FasstTree<T, distance>::getNodesVisited() const {
         return this->nodes_visited;
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    std::shared_ptr<typename BoundGatedTree<T, distance>::Node>
-    BoundGatedTree<T, distance>::build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const {
+    std::shared_ptr<typename FasstTree<T, distance>::Node>
+    FasstTree<T, distance>::build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const {
         if (low == high) {
             return nullptr;
         }
@@ -156,7 +156,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    T BoundGatedTree<T, distance>::nearest_neighbor(const std::shared_ptr<Node> node, const T target) const {
+    T FasstTree<T, distance>::nearest_neighbor(const std::shared_ptr<Node> node, const T target) const {
         std::queue<std::shared_ptr<Node>> nodes;
         nodes.push(node);
 
@@ -187,7 +187,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    T BoundGatedTree<T, distance>::furthest_neighbor(const std::shared_ptr<Node> node, const T target) const {
+    T FasstTree<T, distance>::furthest_neighbor(const std::shared_ptr<Node> node, const T target) const {
         std::queue<std::shared_ptr<Node>> nodes;
         nodes.push(node);
 
@@ -218,7 +218,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    void BoundGatedTree<T, distance>::search(
+    void FasstTree<T, distance>::search(
             std::shared_ptr<Node> node,
             std::vector<T> &inRange,
             const T &target,
@@ -265,7 +265,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    bool BoundGatedTree<T, distance>::visit_node(
+    bool FasstTree<T, distance>::visit_node(
             const typename Node::Distances distances,
             const std::vector<double> ancestors,
             const double radius
@@ -277,7 +277,7 @@ namespace Thesis {
             }
             if (ancestors[i] < distances.nearest[i] && ancestors[i] + radius < distances.nearest[i]) {
                 return false;
-            } else if (distances.furthest[i] < ancestors[i] && distances.furthest[i] + radius < ancestors[i]){
+            } else if (distances.furthest[i] < ancestors[i] && ancestors[i] - radius > distances.furthest[i]){
                 return false;
             }
         }

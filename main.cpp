@@ -12,7 +12,7 @@
 #include "MetricTree.hpp"
 #include "BoundedMetricTree.hpp"
 #include "GatedMetricTree.hpp"
-#include "BoundGatedTree.hpp"
+#include "FasstTree.hpp"
 
 using namespace Thesis;
 
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     const auto tree_tests = {
             benchmark<GatedMetricTree<Point, Point::euclidean_distance>>,
             benchmark<BoundedMetricTree<Point, Point::euclidean_distance>>,
-            benchmark<BoundGatedTree<Point, Point::euclidean_distance>>
+            benchmark<FasstTree<Point, Point::euclidean_distance>>
     };
 
     std::cout << "Number of trees: " << tree_tests.size() + 1 << std::endl;
