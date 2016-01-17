@@ -4,22 +4,12 @@
 #include <vector>
 #include <functional>
 
-#include "TriangleUtils.hpp"
 #include "IMetricTree.hpp"
+#include "TriangleUtils.hpp"
 
 namespace Thesis {
     template<typename T, double(*distance)(const T &, const T &)>
     class GatedMetricTree : public IMetricTree<T, distance> {
-    public:
-        GatedMetricTree(std::vector<T> points);
-
-        std::vector<T> search(const T &target, double radius) const;
-
-        int getCalls() const;
-
-        int getNodesVisited() const;
-
-    private:
         struct Node {
             T point;
 
@@ -38,9 +28,9 @@ namespace Thesis {
 
         using node_itr = typename std::vector<std::shared_ptr<typename GatedMetricTree<T, distance>::Node>>::iterator;
 
+        std::shared_ptr<Node> root;
         mutable int calls;
         mutable int nodes_visited;
-        std::shared_ptr<Node> root;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
 
@@ -51,6 +41,15 @@ namespace Thesis {
                 const double radius,
                 std::vector<double> ancestors
         ) const;
+
+    public:
+        GatedMetricTree(std::vector<T> points);
+
+        std::vector<T> search(const T &target, double radius) const;
+
+        int getCalls() const;
+
+        int getNodesVisited() const;
     };
 
     template<typename T, double(*distance)(const T &, const T &)>
@@ -80,7 +79,7 @@ namespace Thesis {
         return this->calls;
     }
 
-    template<typename T, double(*distance)(const T&, const T&)>
+    template<typename T, double(*distance)(const T &, const T &)>
     int GatedMetricTree<T, distance>::getNodesVisited() const {
         return this->nodes_visited;
     }
