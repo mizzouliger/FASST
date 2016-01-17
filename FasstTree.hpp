@@ -7,12 +7,12 @@
 
 #include <queue>
 
-#include "IMetricTree.hpp"
+#include "ISearchTree.hpp"
 #include "TriangleUtils.hpp"
 
 namespace Thesis {
     template<typename T, double (*distance)(const T &, const T &)>
-    class FasstTree : public IMetricTree<T, distance> {
+    class FasstTree : public ISearchTree<T, distance> {
         struct Node {
             struct Distances {
                 std::vector<double> nearest;

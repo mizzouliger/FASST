@@ -4,12 +4,12 @@
 #include <vector>
 #include <functional>
 
-#include "IMetricTree.hpp"
+#include "ISearchTree.hpp"
 #include "TriangleUtils.hpp"
 
 namespace Thesis {
     template<typename T, double(*distance)(const T &, const T &)>
-    class GatedMetricTree : public IMetricTree<T, distance> {
+    class GatedTree : public ISearchTree<T, distance> {
         struct Node {
             T point;
 
@@ -26,7 +26,7 @@ namespace Thesis {
             }
         };
 
-        using node_itr = typename std::vector<std::shared_ptr<typename GatedMetricTree<T, distance>::Node>>::iterator;
+        using node_itr = typename std::vector<std::shared_ptr<typename GatedTree<T, distance>::Node>>::iterator;
 
         std::shared_ptr<Node> root;
         mutable int calls;
@@ -43,7 +43,7 @@ namespace Thesis {
         ) const;
 
     public:
-        GatedMetricTree(std::vector<T> points);
+        GatedTree(std::vector<T> points);
 
         std::vector<T> search(const T &target, double radius) const;
 
@@ -53,7 +53,7 @@ namespace Thesis {
     };
 
     template<typename T, double(*distance)(const T &, const T &)>
-    GatedMetricTree<T, distance>::GatedMetricTree(std::vector<T> points) : calls(0), nodes_visited(0) {
+    GatedTree<T, distance>::GatedTree(std::vector<T> points) : calls(0), nodes_visited(0) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -65,7 +65,7 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    std::vector<T> GatedMetricTree<T, distance>::search(const T &target, double radius) const {
+    std::vector<T> GatedTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
         this->nodes_visited = 0;
@@ -75,18 +75,18 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    int GatedMetricTree<T, distance>::getCalls() const {
+    int GatedTree<T, distance>::getCalls() const {
         return this->calls;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    int GatedMetricTree<T, distance>::getNodesVisited() const {
+    int GatedTree<T, distance>::getNodesVisited() const {
         return this->nodes_visited;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    std::shared_ptr<typename GatedMetricTree<T, distance>::Node>
-    GatedMetricTree<T, distance>::build_tree(const node_itr low, const node_itr high) const {
+    std::shared_ptr<typename GatedTree<T, distance>::Node>
+    GatedTree<T, distance>::build_tree(const node_itr low, const node_itr high) const {
         if (low == high) {
             return nullptr;
         }
@@ -121,7 +121,7 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    void GatedMetricTree<T, distance>::search(
+    void GatedTree<T, distance>::search(
             const std::shared_ptr<Node> node,
             std::vector<T> &inRange,
             const T &target,

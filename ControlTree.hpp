@@ -7,11 +7,11 @@
 
 #include <vector>
 
-#include "IMetricTree.hpp"
+#include "ISearchTree.hpp"
 
 namespace Thesis {
     template<typename T, double(*distance)(const T &, const T &)>
-    class ControlTree : public IMetricTree<T, distance> {
+    class ControlTree : public ISearchTree<T, distance> {
     public:
         ControlTree(std::vector<T> points) : points(points) { }
         std::vector<T> search(const T &target, double radius) const;

@@ -7,11 +7,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 set(SOURCE_FILES
         main.cpp
         Point.cpp Point.hpp
-        IMetricTree.hpp
+        ISearchTree.hpp
         ControlTree.hpp
         MetricTree.hpp
-        GatedMetricTree.hpp
-        BoundedMetricTree.hpp
+        GatedTree.hpp
+        BoundedTree.hpp
         TriangleUtils.hpp TriangleUtils.cpp FasstTree.hpp)
 
 add_executable(Thesis ${SOURCE_FILES})

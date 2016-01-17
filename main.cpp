@@ -8,10 +8,10 @@
 
 #include "Point.hpp"
 
-#include "IMetricTree.hpp"
+#include "ISearchTree.hpp"
 #include "MetricTree.hpp"
-#include "BoundedMetricTree.hpp"
-#include "GatedMetricTree.hpp"
+#include "BoundedTree.hpp"
+#include "GatedTree.hpp"
 #include "FasstTree.hpp"
 
 using namespace Thesis;
@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
 
 
     const auto tree_tests = {
-            benchmark<GatedMetricTree<Point, Point::euclidean_distance>>,
-            benchmark<BoundedMetricTree<Point, Point::euclidean_distance>>,
+            benchmark<GatedTree<Point, Point::euclidean_distance>>,
+            benchmark<BoundedTree<Point, Point::euclidean_distance>>,
             benchmark<FasstTree<Point, Point::euclidean_distance>>
     };
 
@@ -230,11 +230,11 @@ std::vector<Point> read_points(std::string filename, std::size_t len) {
 
 template<typename T>
 struct result benchmark(std::vector<Point> points, const double radius) {
-    static_assert(std::is_base_of<IMetricTree<Point, Point::euclidean_distance>, T>::value,
-                  "T must derive from IMetricTree");
+    static_assert(std::is_base_of<ISearchTree<Point, Point::euclidean_distance>, T>::value,
+                  "T must derive from ISearchTree");
 
     const auto start_build = std::clock();
-    std::unique_ptr<IMetricTree<Point, Point::euclidean_distance>> tree(new T(points));
+    std::unique_ptr<ISearchTree<Point, Point::euclidean_distance>> tree(new T(points));
     const auto end_build = std::clock();
 
     const auto start_search = std::clock();

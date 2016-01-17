@@ -9,12 +9,12 @@
 #include <queue>
 #include <functional>
 
-#include "IMetricTree.hpp"
+#include "ISearchTree.hpp"
 
 namespace Thesis {
 
     template<typename T, double(*distance)(const T &, const T &)>
-    class MetricTree : public IMetricTree<T, distance> {
+    class MetricTree : public ISearchTree<T, distance> {
     public:
         MetricTree(std::vector<T> points);
 

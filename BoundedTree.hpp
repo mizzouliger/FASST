@@ -8,11 +8,11 @@
 #include <queue>
 #include <cmath>
 
-#include "IMetricTree.hpp"
+#include "ISearchTree.hpp"
 
 namespace Thesis {
     template<typename T, double (*distance)(const T &, const T &)>
-    class BoundedMetricTree : public IMetricTree<T, distance> {
+    class BoundedTree : public ISearchTree<T, distance> {
         struct Node {
             struct Distances {
                 std::vector<double> nearest;
@@ -32,7 +32,7 @@ namespace Thesis {
             }
         };
 
-        using node_itr = typename std::vector<std::shared_ptr<typename BoundedMetricTree<T, distance>::Node>>::iterator;
+        using node_itr = typename std::vector<std::shared_ptr<typename BoundedTree<T, distance>::Node>>::iterator;
 
         std::shared_ptr<Node> root;
         mutable int calls;
@@ -59,7 +59,7 @@ namespace Thesis {
         ) const;
 
     public:
-        BoundedMetricTree(std::vector<T> points);
+        BoundedTree(std::vector<T> points);
 
         std::vector<T> search(const T &target, const double radius) const;
 
@@ -69,7 +69,7 @@ namespace Thesis {
     };
 
     template<typename T, double (*distance)(const T &, const T &)>
-    BoundedMetricTree<T, distance>::BoundedMetricTree(std::vector<T> points) : calls(0) {
+    BoundedTree<T, distance>::BoundedTree(std::vector<T> points) : calls(0) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -82,7 +82,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    std::vector<T> BoundedMetricTree<T, distance>::search(const T &target, double radius) const {
+    std::vector<T> BoundedTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         this->calls = 0;
         this->nodes_visited = 0;
@@ -94,18 +94,18 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    int BoundedMetricTree<T, distance>::getCalls() const {
+    int BoundedTree<T, distance>::getCalls() const {
         return this->calls;
     }
 
     template<typename T, double(*distance)(const T&, const T&)>
-    int BoundedMetricTree<T, distance>::getNodesVisited() const {
+    int BoundedTree<T, distance>::getNodesVisited() const {
         return this->nodes_visited;
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    std::shared_ptr<typename BoundedMetricTree<T, distance>::Node>
-    BoundedMetricTree<T, distance>::build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const {
+    std::shared_ptr<typename BoundedTree<T, distance>::Node>
+    BoundedTree<T, distance>::build_tree(const node_itr low, const node_itr high, std::vector<T> &ancestors) const {
         if (low == high) {
             return nullptr;
         }
@@ -155,7 +155,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    T BoundedMetricTree<T, distance>::nearest_neighbor(const std::shared_ptr<Node> node, const T target) const {
+    T BoundedTree<T, distance>::nearest_neighbor(const std::shared_ptr<Node> node, const T target) const {
         std::queue<std::shared_ptr<Node>> nodes;
         nodes.push(node);
 
@@ -186,7 +186,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    T BoundedMetricTree<T, distance>::furthest_neighbor(const std::shared_ptr<Node> node, const T target) const {
+    T BoundedTree<T, distance>::furthest_neighbor(const std::shared_ptr<Node> node, const T target) const {
         std::queue<std::shared_ptr<Node>> nodes;
         nodes.push(node);
 
@@ -217,7 +217,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    void BoundedMetricTree<T, distance>::search(
+    void BoundedTree<T, distance>::search(
             std::shared_ptr<Node> node,
             std::vector<T> &inRange,
             const T &target,
@@ -251,7 +251,7 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    bool BoundedMetricTree<T, distance>::visit_node(
+    bool BoundedTree<T, distance>::visit_node(
             const typename Node::Distances distances,
             const std::vector<double> ancestors,
             const double radius

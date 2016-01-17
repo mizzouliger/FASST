@@ -9,7 +9,7 @@
 
 namespace Thesis {
     template<typename T, double(*distance)(const T &, const T &)>
-    class IMetricTree {
+    class ISearchTree {
     public:
         virtual std::vector<T> search(const T &target, double radius) const = 0;
 
