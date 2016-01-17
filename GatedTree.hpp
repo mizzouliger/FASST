@@ -1,5 +1,5 @@
-#ifndef THESIS_ENHANCEDMETRICTRREE_H
-#define THESIS_ENHANCEDMETRICTRREE_H
+#ifndef THESIS_GATEDTRREE_H
+#define THESIS_GATEDTRREE_H
 
 #include <vector>
 #include <functional>
@@ -173,4 +173,4 @@ namespace Thesis {
     }
 }
 
-#endif //THESIS_ENHANCEDMETRICTRREE_H
+#endif

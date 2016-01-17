@@ -43,4 +43,4 @@ namespace Thesis {
     }
 }
 
-#endif //THESIS_CONTROLTREE_H
+#endif

@@ -2,8 +2,8 @@
 // Created by Seth Wiesman on 1/7/16.
 //
 
-#ifndef THESIS_BOUNDGATEDTREE_HPP
-#define THESIS_BOUNDGATEDTREE_HPP
+#ifndef THESIS_FASSTTREE_HPP
+#define THESIS_FASSTTREE_HPP
 
 #include <queue>
 
@@ -288,4 +288,4 @@ namespace Thesis {
 
 
 
-#endif //THESIS_BOUNDGATEDTREE_HPP
+#endif 

@@ -2,8 +2,8 @@
 // Created by Seth Wiesman on 12/22/15.
 //
 
-#ifndef THESIS_BOUNDEDMETRICTREE_H
-#define THESIS_BOUNDEDMETRICTREE_H
+#ifndef THESIS_BOUNDEDTREE_H
+#define THESIS_BOUNDEDTREE_H
 
 #include <queue>
 #include <cmath>
@@ -270,4 +270,4 @@ namespace Thesis {
 }
 
 
-#endif //THESIS_BOUNDEDMETRICTREE_H
+#endif 

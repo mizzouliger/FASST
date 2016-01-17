@@ -2,8 +2,8 @@
 // Created by Seth Wiesman on 11/30/15.
 //
 
-#ifndef THESIS_IMETRICTREE_H
-#define THESIS_IMETRICTREE_H
+#ifndef THESIS_FASSTTREE_H
+#define THESIS_FASSTTREE_H
 
 #include <vector>
 
@@ -19,4 +19,4 @@ namespace Thesis {
     };
 }
 
-#endif //THESIS_IMETRICTREE_H
+#endif

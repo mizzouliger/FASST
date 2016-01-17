@@ -148,4 +148,4 @@ namespace Thesis {
     }
 }
 
-#endif //THESIS_METRICTREE_H
+#endif
