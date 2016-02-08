@@ -13,18 +13,21 @@
 namespace Thesis {
     template<typename T, double (*distance)(const T &, const T &)>
     class FasstTree : public ISearchTree<T, distance> {
-        struct Node {
-            struct Distances {
-                std::vector<double> nearest;
-                std::vector<double> furthest;
-            };
 
+        struct Annulus {
+            double innerRadius;
+            double outerRadius;
+
+            Annulus(double inner, double outer): innerRadius(inner), outerRadius(outer) {}
+        };
+
+        struct Node {
             T point;
 
-            Distances left_distances;
-            Distances right_distances;
+            std::vector<Annulus> left_annuli;
+            std::vector<Annulus> right_annuli;
 
-            std::vector<double> parent_distances;
+            std::vector<double> ancestors;
 
             std::shared_ptr<Node> left;
             std::shared_ptr<Node> right;
@@ -45,7 +48,7 @@ namespace Thesis {
         T furthest_neighbor(const std::shared_ptr<Node> node, const T target) const;
 
         bool visit_node(
-                const typename Node::Distances,
+                const typename std::vector<Annulus>,
                 const std::vector<double> ancestors,
                 const double radius
         ) const;
@@ -110,21 +113,19 @@ namespace Thesis {
             return nullptr;
         }
 
-        (*low)->left_distances.nearest.clear();
-
         if ((high - low) == 1) {
             return *low;
         }
 
         for (auto itr = low + 1; itr != high; itr++) {
             auto dist = distance((*low)->point, (*itr)->point);
-            (*itr)->parent_distances.push_back(dist);
+            (*itr)->ancestors.push_back(dist);
         }
 
         const auto median = low + (high - low) / 2;
 
-        std::nth_element(low + 1, median, high, [](const auto n1, const auto n2) {
-            return n1->parent_distances.back() < n2->parent_distances.back();
+        std::nth_element(low + 1, median, high, [](const auto left, const auto right) {
+            return left->ancestors.back() < right->ancestors.back();
         });
 
         ancestors.push_back((*low)->point);
@@ -137,16 +138,14 @@ namespace Thesis {
                 const T nearest = nearest_neighbor((*low)->left, point);
                 const T furthest = furthest_neighbor((*low)->left, point);
 
-                (*low)->left_distances.nearest.push_back(distance(point, nearest));
-                (*low)->left_distances.furthest.push_back(distance(point, furthest));
+                (*low)->left_annuli.push_back(Annulus(distance(point, nearest), distance(point, furthest)));
             }
 
             if ((*low)->right != nullptr) {
                 const T nearest  = nearest_neighbor((*low)->right, point);
                 const T furthest = furthest_neighbor((*low)->right, point);
 
-                (*low)->right_distances.nearest.push_back(distance(point, nearest));
-                (*low)->right_distances.furthest.push_back(distance(point, furthest));
+                (*low)->right_annuli.push_back(Annulus(distance(point, nearest), distance(point, furthest)));
             }
         }
 
@@ -231,8 +230,8 @@ namespace Thesis {
 
         this->nodes_visited++;
 
-        const auto minDistance = TriangleUtils::maximize_minimum_triangle(node->parent_distances, ancestors);
-        const auto maxDistance = TriangleUtils::minimize_maximum_triangle(node->parent_distances, ancestors);
+        const auto minDistance = TriangleUtils::maximize_minimum_triangle(node->ancestors, ancestors);
+        const auto maxDistance = TriangleUtils::minimize_maximum_triangle(node->ancestors, ancestors);
 
         if (radius <= minDistance || maxDistance <= radius) {
 
@@ -253,11 +252,11 @@ namespace Thesis {
             }
         }
 
-        if (node->left && visit_node(node->left_distances, ancestors, radius)) {
+        if (node->left && visit_node(node->left_annuli, ancestors, radius)) {
             search(node->left, inRange, target, radius, ancestors);
         }
 
-        if (node->right && visit_node(node->right_distances, ancestors, radius)) {
+        if (node->right && visit_node(node->right_annuli, ancestors, radius)) {
             search(node->right, inRange, target, radius, ancestors);
         }
 
@@ -266,18 +265,18 @@ namespace Thesis {
 
     template<typename T, double (*distance)(const T &, const T &)>
     bool FasstTree<T, distance>::visit_node(
-            const typename Node::Distances distances,
+            const typename std::vector<Annulus> annuli,
             const std::vector<double> ancestors,
             const double radius
     ) const {
 
-        for (auto i = 0; i < distances.nearest.size(); i++) {
+        for (auto i = 0; i < annuli.size(); i++) {
             if (ancestors[i] == TriangleUtils::infinity) {
                 continue;
             }
-            if (ancestors[i] < distances.nearest[i] && ancestors[i] + radius < distances.nearest[i]) {
+            if (ancestors[i] < annuli[i].innerRadius && ancestors[i] + radius < annuli[i].innerRadius) {
                 return false;
-            } else if (distances.furthest[i] < ancestors[i] && ancestors[i] - radius > distances.furthest[i]){
+            } else if (annuli[i].outerRadius < ancestors[i] && ancestors[i] - radius > annuli[i].outerRadius){
                 return false;
             }
         }

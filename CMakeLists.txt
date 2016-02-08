@@ -12,6 +12,7 @@ set(SOURCE_FILES
         MetricTree.hpp
         GatedTree.hpp
         BoundedTree.hpp
-        TriangleUtils.hpp TriangleUtils.cpp FasstTree.hpp)
+        FasstTree.hpp
+        TriangleUtils.hpp TriangleUtils.cpp)
 
 add_executable(Thesis ${SOURCE_FILES})
