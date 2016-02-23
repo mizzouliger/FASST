@@ -6,18 +6,17 @@
 #include <dirent.h>
 #include <future>
 
-#include "Point.hpp"
-
 #include "ISearchTree.hpp"
+#include "DistanceMetrics.hpp"
 #include "MetricTree.hpp"
 #include "BoundedTree.hpp"
-#include "GatedTree.hpp"
 #include "FasstTree.hpp"
 
 using namespace Thesis;
 
+template<typename T>
 struct benchmark {
-    std::vector<Point> result;
+    std::vector<T> result;
     int calls;
     int nodes_visited;
     double build_time;
@@ -25,7 +24,7 @@ struct benchmark {
 };
 
 template<typename T, typename U, double(*distance)(const U&, const U&)>
-benchmark run_benchmark(std::vector<U> points, const U target, const double radius) {
+benchmark<U> run_benchmark(std::vector<U> points, const U target, const double radius) {
 
     const auto start_build = std::clock();
     std::unique_ptr<T> tree(new T(points));
@@ -40,7 +39,7 @@ benchmark run_benchmark(std::vector<U> points, const U target, const double radi
         assert(dist <= radius);
     }
 
-    return {
+    return benchmark<U>{
             results,
             tree->getCalls(),
             tree->getNodesVisited(),
@@ -49,11 +48,12 @@ benchmark run_benchmark(std::vector<U> points, const U target, const double radi
     };
 }
 
-std::vector<Point> read_points(std::string filename);
+std::vector<std::vector<double>> read_points(std::string filename);
 
 std::vector<std::string> get_files(std::string directory);
 
-void verify_results(struct benchmark control, struct benchmark variable);
+template<typename T>
+void verify_results(benchmark<T> control, benchmark<T> variable);
 
 void display_progress_bar(double progress);
 
@@ -78,7 +78,7 @@ double find_radius(std::vector<T> points, T target) {
 }
 
 template<typename T, double(*distance)(const T&, const T&)>
-std::vector<std::vector<benchmark>> run_tests(std::vector<T> point_set, T target, long step_size, long iterations) {
+std::vector<std::vector<benchmark<T>>> run_tests(std::vector<T> point_set, T target, long step_size, long iterations) {
     const auto benchmarks = {
             run_benchmark<BoundedTree<T, distance>, T, distance>,
             run_benchmark<FasstTree<T, distance>, T, distance>
@@ -86,13 +86,13 @@ std::vector<std::vector<benchmark>> run_tests(std::vector<T> point_set, T target
 
     std::cout << "Number of trees: " << benchmarks.size() + 1 << std::endl;
 
-    std::vector<std::vector<benchmark>> final_results;
+    std::vector<std::vector<benchmark<T>>> final_results;
     final_results.reserve((unsigned long) (iterations + 1));
 
     for (auto i = step_size; i <= iterations; i++) {
         display_progress_bar(static_cast<double>(i) / static_cast<double>(iterations));
 
-        std::vector<Point> points(point_set.begin(), point_set.begin() + i);
+        std::vector<T> points(point_set.begin(), point_set.begin() + i);
         auto radius = find_radius<T, distance>(points, target);
 
         auto metric_tree_future = std::async(std::launch::async, [&points, &target, radius]() {
@@ -107,7 +107,7 @@ std::vector<std::vector<benchmark>> run_tests(std::vector<T> point_set, T target
             }));
         }
 
-        std::vector<benchmark> results = {metric_tree_future.get()};
+        std::vector<benchmark<T>> results = {metric_tree_future.get()};
 
         for (auto& future : futures) {
             auto test_result = future.get();
@@ -177,10 +177,17 @@ int main(int argc, char *argv[]) {
         search_file.open(outdir + "/search_time/" + file);
 
         auto points = read_points(indir + "/" + file);
-        auto origin = Point::origin(points[0].size());
-        auto benchmarks_set = run_tests<Point, Point::euclidean_distance>(points, origin, step_size, iterations);
+        auto origin = std::vector<double>(points[0].size(), 0.0);
+        auto benchmarks_set = run_tests<std::vector<double>, Metrics::norm2>(points, origin, step_size, iterations);
 
+        int i = 1;
         for (auto& benchmarks : benchmarks_set) {
+            const auto size = step_size * i++;
+            distance_file       << size << "\t";
+            node_visited_file   << size << "\t";
+            build_file          << size << "\t";
+            search_file         << size << "\t";
+
             for (auto& bench : benchmarks) {
                 distance_file       << bench.calls          << "\t";
                 node_visited_file   << bench.nodes_visited  << "\t";
@@ -249,8 +256,8 @@ std::vector<std::string> get_files(std::string directory) {
     return files;
 }
 
-std::vector<Point> read_points(std::string filename) {
-    std::vector<Point> points;
+std::vector<std::vector<double>> read_points(std::string filename) {
+    std::vector<std::vector<double>> points;
 
     std::ifstream file(filename);
     std::string input;
@@ -263,15 +270,15 @@ std::vector<Point> read_points(std::string filename) {
             elements.push_back(stod(token));
         }
 
-        points.push_back(Point(elements));
+        points.push_back(elements);
     }
 
     file.close();
     return points;
 }
 
-
-void verify_results(struct benchmark control, struct benchmark variable) {
+template<typename T>
+void verify_results(benchmark<T> control, benchmark<T> variable) {
 
     assert(control.result.size() == variable.result.size());
 
