@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <dirent.h>
 #include <future>
+#include <utility>
 
 #include "ISearchTree.hpp"
 #include "DistanceMetrics.hpp"
@@ -12,207 +13,52 @@
 #include "BoundedTree.hpp"
 #include "FasstTree.hpp"
 
+#include "ezOptionParser.hpp"
+
 using namespace Thesis;
 
-template<typename T>
+enum class Metric {
+    Norm2,
+    Edit,
+};
+
+Metric stringToMetric(const std::string str) {
+    if ("norm2" == str) {
+        return Metric::Norm2;
+    }
+
+    if ("edit" == str) {
+        return Metric::Edit;
+    }
+
+    std::cout << "invalid metric " << str << std::endl;
+    exit(0);
+}
+
 struct benchmark {
-    std::vector<T> result;
     int calls;
     int nodes_visited;
     double build_time;
     double search_time;
 };
 
-template<typename T, typename U, double(*distance)(const U&, const U&)>
-benchmark<U> run_benchmark(std::vector<U> points, const U target, const double radius) {
+template<typename T, typename U>
+std::pair<std::vector<U>, benchmark> run_benchmark(std::vector<U> points, const U target, const double radius) {
 
     const auto start_build = std::clock();
     std::unique_ptr<T> tree(new T(points));
     const auto end_build = std::clock();
 
     const auto start_search = std::clock();
-    auto results = tree->search(target, radius);
+    auto result = tree->search(target, radius);
     const auto end_search = std::clock();
 
-    for (auto &point : results) {
-        const auto dist = distance(point, target);
-        assert(dist <= radius);
-    }
-
-    return benchmark<U>{
-            results,
+    return std::make_pair(result, benchmark {
             tree->getCalls(),
             tree->getNodesVisited(),
             (end_build - start_build) / (double) (CLOCKS_PER_SEC / 1000),
             (end_search - start_search) / (double) (CLOCKS_PER_SEC / 1000)
-    };
-}
-
-std::vector<std::vector<double>> read_points(std::string filename);
-
-std::vector<std::string> get_files(std::string directory);
-
-template<typename T>
-void verify_results(benchmark<T> control, benchmark<T> variable);
-
-void display_progress_bar(double progress);
-
-template<typename T, double(*distance)(const T&, const T&)>
-double find_radius(std::vector<T> points, T target) {
-    MetricTree<T, distance> tree(points);
-
-    double radius = 10.0;
-    auto result = tree.search(target, radius);
-
-    while (result.size() < 4 || result.size() > 6) {
-        if (result.size() < 4) {
-            radius = radius + (radius / 2);
-        } else {
-            radius = radius - (radius / 2);
-        }
-
-        result = tree.search(target, radius);
-    }
-
-    return radius;
-}
-
-template<typename T, double(*distance)(const T&, const T&)>
-std::vector<std::vector<benchmark<T>>> run_tests(std::vector<T> point_set, T target, long step_size, long iterations) {
-    const auto benchmarks = {
-            run_benchmark<BoundedTree<T, distance>, T, distance>,
-            run_benchmark<FasstTree<T, distance>, T, distance>
-    };
-
-    std::cout << "Number of trees: " << benchmarks.size() + 1 << std::endl;
-
-    std::vector<std::vector<benchmark<T>>> final_results;
-    final_results.reserve((unsigned long) (iterations + 1));
-
-    for (auto i = step_size; i <= iterations; i++) {
-        display_progress_bar(static_cast<double>(i) / static_cast<double>(iterations));
-
-        std::vector<T> points(point_set.begin(), point_set.begin() + i);
-        auto radius = find_radius<T, distance>(points, target);
-
-        auto metric_tree_future = std::async(std::launch::async, [&points, &target, radius]() {
-            return run_benchmark<MetricTree<T, distance>, T, distance>(points, target, radius);
-        });
-
-        std::vector<decltype(metric_tree_future)> futures;
-        futures.reserve(benchmarks.size());
-        for (auto tree_bench : benchmarks) {
-            futures.push_back(std::async(std::launch::async, [tree_bench, &points, &target, radius]() {
-                return tree_bench(points, target, radius);
-            }));
-        }
-
-        std::vector<benchmark<T>> results = {metric_tree_future.get()};
-
-        for (auto& future : futures) {
-            auto test_result = future.get();
-            verify_results(results[0], test_result);
-            results.push_back(test_result);
-        }
-
-        final_results.push_back(results);
-    }
-
-    return final_results;
-}
-
-std::string now() {
-    time_t _now = time(0);
-    struct tm tstruct;
-    char buf[80];
-    tstruct = *localtime(&_now);
-    strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
-    return std::string(buf);
-}
-
-int main(int argc, char *argv[]) {
-    std::vector<std::string> options(argv + 1, argv + argc);
-
-    if (options.size() < 2) {
-        return 1;
-    }
-
-    std::string indir = options[0];
-    std::string outdir = options[1];
-
-    long iterations = 100;
-    if (options.size() > 2) {
-        iterations = std::stol(options[2]);
-    }
-
-    long step_size = 10;
-    if (options.size() == 4) {
-        step_size = std::stol(options[3]);
-    }
-
-    const auto files = get_files(indir);
-
-    std::cout << "Thesis -- Metric Tree Benchmarking Tests" << std::endl;
-    std::cout << "Author: Seth Wiesman Date: " << now() << std::endl;
-    std::cout << "----------------------------------------------" << std::endl;
-    std::cout << "Number of iterations: " << iterations << std::endl;
-    std::cout << "Step size: " << step_size << std::endl;
-    std::cout << "Number of files: " << files.size() << std::endl;
-
-    unsigned long file_count = 1;
-    for (auto file : files) {
-
-        std::cout << "File " << file_count++ << " / " << files.size() << " : " << file << std::endl;
-
-        std::ofstream distance_file;
-        distance_file.open(outdir + "/distance_calls/" + file);
-
-        std::ofstream node_visited_file;
-        node_visited_file.open(outdir + "/node_visited/" + file);
-
-        std::ofstream build_file;
-        build_file.open(outdir + "/build_time/" + file);
-
-        std::ofstream search_file;
-        search_file.open(outdir + "/search_time/" + file);
-
-        auto points = read_points(indir + "/" + file);
-        auto origin = std::vector<double>(points[0].size(), 0.0);
-        auto benchmarks_set = run_tests<std::vector<double>, Metrics::norm2>(points, origin, step_size, iterations);
-
-        int i = 1;
-        for (auto& benchmarks : benchmarks_set) {
-            const auto size = step_size * i++;
-            distance_file       << size << "\t";
-            node_visited_file   << size << "\t";
-            build_file          << size << "\t";
-            search_file         << size << "\t";
-
-            for (auto& bench : benchmarks) {
-                distance_file       << bench.calls          << "\t";
-                node_visited_file   << bench.nodes_visited  << "\t";
-                build_file          << bench.build_time     << "\t";
-                search_file         << bench.search_time    << "\t";
-            }
-
-            distance_file       << "\n";
-            node_visited_file   << "\n";
-            build_file          << "\n";
-            search_file         << "\n";
-
-        }
-
-        distance_file.close();
-        node_visited_file.close();
-        build_file.close();
-        search_file.close();
-
-        std::cout << std::endl << std::endl;
-    }
-
-    std::cout << "Benchmarking Complete" << std::endl;
-
-    return 0;
+    });
 }
 
 void display_progress_bar(double progress) {
@@ -256,6 +102,20 @@ std::vector<std::string> get_files(std::string directory) {
     return files;
 }
 
+std::vector<std::string> read_lines(std::string filename) {
+    std::vector<std::string> words;
+
+    std::ifstream file(filename);
+    std::string input;
+
+    while (std::getline(file, input)) {
+        words.push_back(input);
+    }
+
+    file.close();
+    return words;
+}
+
 std::vector<std::vector<double>> read_points(std::string filename) {
     std::vector<std::vector<double>> points;
 
@@ -277,14 +137,199 @@ std::vector<std::vector<double>> read_points(std::string filename) {
     return points;
 }
 
-template<typename T>
-void verify_results(benchmark<T> control, benchmark<T> variable) {
+template<typename T, double(*distance)(const T&, const T&)>
+void verify_results(std::vector<T> control, std::vector<T> variable, T target, double radius) {
 
     assert(control.result.size() == variable.result.size());
 
-    for (auto &point : control.result) {
-        const auto location = std::find(variable.result.begin(), variable.result.end(), point);
+    for (auto &point : variable) {
+        const auto dist = distance(point, target);
+        assert(dist <= radius);
+    }
+
+    for (auto &point : control) {
+        const auto location = std::find(variable.begin(), variable.end(), point);
         assert(location != variable.result.end());
     }
+}
+
+template<typename T, double(*distance)(const T&, const T&)>
+double find_radius(std::vector<T> points, T target) {
+    MetricTree<T, distance> tree(points);
+
+    double radius = 10.0;
+    auto result = tree.search(target, radius);
+
+    while (result.size() < 4 || result.size() > 6) {
+        if (result.size() < 4) {
+            radius = radius + (radius / 2);
+        } else {
+            radius = radius - (radius / 2);
+        }
+
+        result = tree.search(target, radius);
+    }
+
+    return radius;
+}
+
+template<typename T, double(*distance)(const T&, const T&)>
+std::vector<std::vector<benchmark>> run_tests(std::vector<T> point_set, T target, long step_size, long iterations) {
+    const auto benchmarks = {
+            run_benchmark<BoundedTree<T, distance>, T>,
+            run_benchmark<FasstTree<T, distance>, T>
+    };
+
+    std::cout << "Number of trees: " << benchmarks.size() + 1 << std::endl;
+
+    std::vector<std::vector<benchmark>> final_results;
+    final_results.reserve((unsigned long) (iterations + 1));
+
+    for (auto i = step_size; i <= iterations; i++) {
+        display_progress_bar(static_cast<double>(i) / static_cast<double>(iterations));
+
+        std::vector<T> points(point_set.begin(), point_set.begin() + i);
+        auto radius = find_radius<T, distance>(points, target);
+
+        auto metric_tree_future = std::async(std::launch::async, [&points, &target, radius]() {
+            return run_benchmark<MetricTree<T, distance>, T>(points, target, radius);
+        });
+
+        std::vector<decltype(metric_tree_future)> futures;
+        futures.reserve(benchmarks.size());
+        for (auto tree_bench : benchmarks) {
+            futures.push_back(std::async(std::launch::async, [tree_bench, &points, &target, radius]() {
+                return tree_bench(points, target, radius);
+            }));
+        }
+
+        std::vector<T> control;
+        benchmark metricBench = {0, 0, 0, 0};
+        std::tie(control, metricBench) = metric_tree_future.get();
+        std::vector<benchmark> results = {metricBench};
+
+        for (auto& future : futures) {
+            std::vector<T> variable;
+            benchmark bench = {0, 0, 0, 0};
+            std::tie(variable, bench) = future.get();
+            verify_results<T, distance>(control, variable, target, radius);
+            results.push_back(bench);
+        }
+
+        final_results.push_back(results);
+    }
+
+    return final_results;
+}
+
+std::string now() {
+    time_t _now = time(0);
+    struct tm tstruct;
+    char buf[80];
+    tstruct = *localtime(&_now);
+    strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+    return std::string(buf);
+}
+
+int main(int argc, const char *argv[]) {
+    ez::ezOptionParser opt;
+
+    opt.add("", 1, 1, 0, "Relative path to the directory containing the input files", "--input");
+    opt.add("", 1, 1, 0, "Relative path to the directory were output files should be stored", "--output");
+    opt.add("", 1, 1, 0, "Metric function to use", "--metric");
+    opt.add("10", 0, 1, 0, "Step Size", "--step");
+    opt.add("100", 0, 1, 0, "Number of iterations", "--itr");
+
+    opt.parse(argc, argv);
+
+    std::string indir;
+    std::string outdir;
+    std::string metricString;
+    long iterations;
+    long step_size;
+
+    opt.get("--input")->getString(indir);
+    opt.get("--output")->getString(outdir);
+    opt.get("--metric")->getString(metricString);
+    opt.get("--step")->getLong(step_size);
+    opt.get("--itr")->getLong(iterations);
+
+    auto files = get_files(indir);
+
+    std::cout << "Thesis -- Metric Tree Benchmarking Tests" << std::endl;
+    std::cout << "Author: Seth Wiesman Date: " << now() << std::endl;
+    std::cout << "----------------------------------------------" << std::endl;
+    std::cout << "Number of iterations: " << iterations << std::endl;
+    std::cout << "Step size: " << step_size << std::endl;
+    std::cout << "Number of files: " << files.size() << std::endl;
+
+    unsigned long file_count = 1;
+    for (auto file : files) {
+
+        std::cout << "File " << file_count++ << " / " << files.size() << " : " << file << std::endl;
+
+        std::ofstream distance_file;
+        distance_file.open(outdir + "/distance_calls/" + file);
+
+        std::ofstream node_visited_file;
+        node_visited_file.open(outdir + "/node_visited/" + file);
+
+        std::ofstream build_file;
+        build_file.open(outdir + "/build_time/" + file);
+
+        std::ofstream search_file;
+        search_file.open(outdir + "/search_time/" + file);
+
+
+        std::vector<std::vector<benchmark>> bench_set;
+        switch (stringToMetric(metricString)) {
+            case Metric::Norm2: {
+                auto points = read_points(indir + "/" + file);
+                auto origin = std::vector<double>(points[0].size(), 0.0);
+                bench_set = run_tests<std::vector<double>, Metrics::norm2>(points, origin, step_size, iterations);
+            }
+                break;
+
+            case Metric::Edit: {
+                auto words = read_lines(indir + "/" + file);
+                auto target = "hello";
+                bench_set = run_tests<std::string, Metrics::editDistance>(words, target, step_size, iterations);
+            }
+                break;
+        }
+
+        int i = 1;
+        for (auto& benchmarks : bench_set) {
+            const auto size = step_size * i++;
+            distance_file       << size << "\t";
+            node_visited_file   << size << "\t";
+            build_file          << size << "\t";
+            search_file         << size << "\t";
+
+            for (auto& bench : benchmarks) {
+                distance_file       << bench.calls          << "\t";
+                node_visited_file   << bench.nodes_visited  << "\t";
+                build_file          << bench.build_time     << "\t";
+                search_file         << bench.search_time    << "\t";
+            }
+
+            distance_file       << "\n";
+            node_visited_file   << "\n";
+            build_file          << "\n";
+            search_file         << "\n";
+
+        }
+
+        distance_file.close();
+        node_visited_file.close();
+        build_file.close();
+        search_file.close();
+
+        std::cout << std::endl << std::endl;
+    }
+
+    std::cout << "Benchmarking Complete" << std::endl;
+
+    return 0;
 }
 

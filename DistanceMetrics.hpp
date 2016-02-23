@@ -6,10 +6,12 @@
 #define THESIS_DISTANCEMETRICS_HPP
 
 #include <vector>
+#include <string>
 
 namespace Thesis {
     namespace Metrics {
         double norm2(const std::vector<double> &v1, const std::vector<double> &v2);
+        double editDistance(const std::string &s1, const std::string &s2);
     };
 };
 
