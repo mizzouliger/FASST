@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <dirent.h>
 #include <future>
-#include <utility>
 
 #include "ISearchTree.hpp"
 #include "DistanceMetrics.hpp"
@@ -20,6 +19,7 @@ using namespace Thesis;
 enum class Metric {
     Norm2,
     Edit,
+    Hamming,
 };
 
 Metric stringToMetric(const std::string str) {
@@ -31,6 +31,9 @@ Metric stringToMetric(const std::string str) {
         return Metric::Edit;
     }
 
+	if ("hamming" == str) {
+		return Metric::Hamming;
+	}
     std::cout << "invalid metric " << str << std::endl;
     exit(0);
 }
@@ -137,10 +140,24 @@ std::vector<std::vector<double>> read_points(std::string filename) {
     return points;
 }
 
+std::vector<int> read_ints(std::string filename) {
+    std::vector<int> nums;
+
+    std::ifstream file(filename);
+    std::string input;
+
+    while (std::getline(file, input)) {
+        nums.push_back(atoi(input.c_str()));
+    }
+
+    file.close();
+    return nums;
+}
+
 template<typename T, double(*distance)(const T&, const T&)>
 void verify_results(std::vector<T> control, std::vector<T> variable, T target, double radius) {
 
-    assert(control.result.size() == variable.result.size());
+    assert(control.size() == variable.size());
 
     for (auto &point : variable) {
         const auto dist = distance(point, target);
@@ -149,7 +166,7 @@ void verify_results(std::vector<T> control, std::vector<T> variable, T target, d
 
     for (auto &point : control) {
         const auto location = std::find(variable.begin(), variable.end(), point);
-        assert(location != variable.result.end());
+        assert(location != variable.end());
     }
 }
 
@@ -174,22 +191,22 @@ double find_radius(std::vector<T> points, T target) {
 }
 
 template<typename T, double(*distance)(const T&, const T&)>
-std::vector<std::vector<benchmark>> run_tests(std::vector<T> point_set, T target, long step_size, long iterations) {
+std::vector<std::vector<benchmark>>
+run_tests(std::vector<T> point_set, T target, long step, long iterations, double itrRadius) {
     const auto benchmarks = {
             run_benchmark<BoundedTree<T, distance>, T>,
             run_benchmark<FasstTree<T, distance>, T>
     };
 
-    std::cout << "Number of trees: " << benchmarks.size() + 1 << std::endl;
-
     std::vector<std::vector<benchmark>> final_results;
     final_results.reserve((unsigned long) (iterations + 1));
 
-    for (auto i = step_size; i <= iterations; i++) {
+    for (auto i = step; i <= iterations; i += step) {
         display_progress_bar(static_cast<double>(i) / static_cast<double>(iterations));
 
-        std::vector<T> points(point_set.begin(), point_set.begin() + i);
-        auto radius = find_radius<T, distance>(points, target);
+        std::vector<T> points(point_set.begin(), itrRadius == 0.0 ? point_set.begin() + i : point_set.end());
+
+        auto radius = itrRadius == 0.0 ? find_radius<T, distance>(points, target) : itrRadius++;
 
         auto metric_tree_future = std::async(std::launch::async, [&points, &target, radius]() {
             return run_benchmark<MetricTree<T, distance>, T>(points, target, radius);
@@ -237,8 +254,8 @@ int main(int argc, const char *argv[]) {
     opt.add("", 1, 1, 0, "Relative path to the directory containing the input files", "--input");
     opt.add("", 1, 1, 0, "Relative path to the directory were output files should be stored", "--output");
     opt.add("", 1, 1, 0, "Metric function to use", "--metric");
-    opt.add("10", 0, 1, 0, "Step Size", "--step");
-    opt.add("100", 0, 1, 0, "Number of iterations", "--itr");
+    opt.add("1", 0, 1, 0, "Step Size", "--step");
+    opt.add("10", 0, 1, 0, "Number of iterations", "--itr");
 
     opt.parse(argc, argv);
 
@@ -280,20 +297,26 @@ int main(int argc, const char *argv[]) {
         std::ofstream search_file;
         search_file.open(outdir + "/search_time/" + file);
 
-
         std::vector<std::vector<benchmark>> bench_set;
         switch (stringToMetric(metricString)) {
             case Metric::Norm2: {
                 auto points = read_points(indir + "/" + file);
                 auto origin = std::vector<double>(points[0].size(), 0.0);
-                bench_set = run_tests<std::vector<double>, Metrics::norm2>(points, origin, step_size, iterations);
+                bench_set = run_tests<std::vector<double>, Metrics::norm2>(points, origin, step_size, iterations, 0);
             }
                 break;
 
             case Metric::Edit: {
                 auto words = read_lines(indir + "/" + file);
                 auto target = "hello";
-                bench_set = run_tests<std::string, Metrics::editDistance>(words, target, step_size, iterations);
+                bench_set = run_tests<std::string, Metrics::editDistance>(words, target, step_size, iterations, 1);
+            }
+                break;
+
+            case Metric::Hamming:{
+                auto nums = read_ints(indir + "/" + file);
+                int target = 0;
+                bench_set = run_tests<int, Metrics::hammingDistance>(nums, target, step_size, iterations, 1);
             }
                 break;
         }
@@ -313,11 +336,10 @@ int main(int argc, const char *argv[]) {
                 search_file         << bench.search_time    << "\t";
             }
 
-            distance_file       << "\n";
-            node_visited_file   << "\n";
-            build_file          << "\n";
-            search_file         << "\n";
-
+            distance_file       << std::endl;
+            node_visited_file   << std::endl;
+            build_file          << std::endl;
+            search_file         << std::endl;
         }
 
         distance_file.close();

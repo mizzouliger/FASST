@@ -37,3 +37,15 @@ double ::Thesis::Metrics::editDistance(const std::string &s1, const std::string 
 
     return static_cast<double>(table[length1][length2]);
 }
+
+double ::Thesis::Metrics::hammingDistance(const int &x, const int &y) {
+    short dist = 0;
+    int val = x^y;
+
+    while(val) {
+        ++dist;
+        val &= val - 1;
+    }
+
+    return static_cast<double>(dist);
+}
