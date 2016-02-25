@@ -178,6 +178,7 @@ double find_radius(std::vector<T> points, T target) {
     auto result = tree.search(target, radius);
 
     while (result.size() < 4 || result.size() > 6) {
+        std::cout << result.size() << std::endl;
         if (result.size() < 4) {
             radius = radius + (radius / 2);
         } else {
