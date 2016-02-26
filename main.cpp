@@ -192,7 +192,7 @@ double find_radius(std::vector<T> points, T target) {
 
 template<typename T, double(*distance)(const T&, const T&)>
 std::vector<std::vector<benchmark>>
-run_tests(std::vector<T> point_set, T target, long step, long iterations, double itrRadius) {
+run_tests(std::vector<T> &point_set, T target, long step, long iterations, double itrRadius) {
     const auto benchmarks = {
             run_benchmark<BoundedTree<T, distance>, T>,
             run_benchmark<FasstTree<T, distance>, T>
@@ -205,8 +205,15 @@ run_tests(std::vector<T> point_set, T target, long step, long iterations, double
         display_progress_bar(static_cast<double>(i) / static_cast<double>(iterations));
 
         std::vector<T> points(point_set.begin(), itrRadius == 0.0 ? point_set.begin() + i : point_set.end());
+        std::random_shuffle(points.begin(), points.end());
 
-        auto radius = itrRadius == 0.0 ? find_radius<T, distance>(points, target) : itrRadius++;
+        double radius;
+        if (itrRadius == 0.0) {
+            radius = find_radius<T, distance>(points, target);
+        } else {
+            radius = itrRadius;
+            itrRadius += 1;
+        }
 
         auto metric_tree_future = std::async(std::launch::async, [&points, &target, radius]() {
             return run_benchmark<MetricTree<T, distance>, T>(points, target, radius);
@@ -254,8 +261,8 @@ int main(int argc, const char *argv[]) {
     opt.add("", 1, 1, 0, "Relative path to the directory containing the input files", "--input");
     opt.add("", 1, 1, 0, "Relative path to the directory were output files should be stored", "--output");
     opt.add("", 1, 1, 0, "Metric function to use", "--metric");
-    opt.add("1", 0, 1, 0, "Step Size", "--step");
-    opt.add("10", 0, 1, 0, "Number of iterations", "--itr");
+    opt.add("10", 0, 1, 0, "Step Size", "--step");
+    opt.add("100", 0, 1, 0, "Number of iterations", "--itr");
 
     opt.parse(argc, argv);
 

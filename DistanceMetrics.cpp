@@ -18,7 +18,7 @@ double ::Thesis::Metrics::editDistance(const std::string &s1, const std::string 
     auto length1 = s1.length();
     auto length2 = s2.length();
 
-    std::vector<std::vector<int>>  table(length1 + 1, std::vector<int>(length2));
+    std::vector<std::vector<int>> table(length1 + 1, std::vector<int>(length2 + 1));
 
     for (auto i = 0; i <= length1; i++) {
         table[i][0] = i;
