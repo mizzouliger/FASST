@@ -20,6 +20,7 @@ enum class Metric {
     Norm2,
     Edit,
     Hamming,
+    Blossum,
 };
 
 Metric stringToMetric(const std::string str) {
@@ -34,6 +35,10 @@ Metric stringToMetric(const std::string str) {
 	if ("hamming" == str) {
 		return Metric::Hamming;
 	}
+
+    if ("blossum" == str) {
+        return Metric::Blossum;
+    }
     std::cout << "invalid metric " << str << std::endl;
     exit(0);
 }
@@ -119,6 +124,36 @@ std::vector<std::string> read_lines(std::string filename) {
     return words;
 }
 
+std::vector<std::string> get_sequences(unsigned long num) {
+    std::vector<std::string> sequences;
+    sequences.reserve(num);
+
+    for (auto i = 0; i < num; i++) {
+        char* seq = (char*)malloc(sizeof(char) * 15);
+
+        for (auto j = 0; j < 15; j++) {
+            switch (rand() % 4) {
+                case 0:
+                    seq[j] = 'G';
+                    break;
+                case 1:
+                    seq[j] = 'T';
+                    break;
+                case 2:
+                    seq[j] = 'A';
+                    break;
+                default:
+                    seq[j] = 'C';
+                    break;
+            }
+        }
+
+        sequences.push_back(std::string(seq));
+    }
+
+    return sequences;
+}
+
 std::vector<std::vector<double>> read_points(std::string filename) {
     std::vector<std::vector<double>> points;
 
@@ -178,7 +213,6 @@ double find_radius(std::vector<T> points, T target) {
     auto result = tree.search(target, radius);
 
     while (result.size() < 4 || result.size() > 6) {
-        std::cout << result.size() << std::endl;
         if (result.size() < 4) {
             radius = radius + (radius / 2);
         } else {
@@ -262,8 +296,8 @@ int main(int argc, const char *argv[]) {
     opt.add("", 1, 1, 0, "Relative path to the directory containing the input files", "--input");
     opt.add("", 1, 1, 0, "Relative path to the directory were output files should be stored", "--output");
     opt.add("", 1, 1, 0, "Metric function to use", "--metric");
-    opt.add("10", 0, 1, 0, "Step Size", "--step");
-    opt.add("100", 0, 1, 0, "Number of iterations", "--itr");
+    opt.add("1", 0, 1, 0, "Step Size", "--step");
+    opt.add("10", 0, 1, 0, "Number of iterations", "--itr");
 
     opt.parse(argc, argv);
 
@@ -287,6 +321,7 @@ int main(int argc, const char *argv[]) {
     std::cout << "Number of iterations: " << iterations << std::endl;
     std::cout << "Step size: " << step_size << std::endl;
     std::cout << "Number of files: " << files.size() << std::endl;
+    std::cout << "Metric: " << metricString << std::endl;
 
     unsigned long file_count = 1;
     for (auto file : files) {
@@ -325,6 +360,12 @@ int main(int argc, const char *argv[]) {
                 auto nums = read_ints(indir + "/" + file);
                 int target = 0;
                 bench_set = run_tests<int, Metrics::hammingDistance>(nums, target, step_size, iterations, 1);
+            }
+                break;
+            case Metric::Blossum: {
+                auto sequences = get_sequences(100000);
+                auto target = sequences[0];
+                bench_set = run_tests<std::string, Metrics::blosum>(sequences, target, step_size, iterations, 1);
             }
                 break;
         }

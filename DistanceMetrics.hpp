@@ -13,6 +13,7 @@ namespace Thesis {
         double norm2(const std::vector<double> &v1, const std::vector<double> &v2);
         double editDistance(const std::string &s1, const std::string &s2);
         double hammingDistance(const int &x, const int &y);
+        double blosum(const std::string& s1, const std::string& s2);
     };
 };
 

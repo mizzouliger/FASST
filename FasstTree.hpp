@@ -44,18 +44,13 @@ class FasstTree : public ISearchTree<T, distance> {
 
     std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high, int depth) const;
 
-    bool visit_node(
-            const typename std::vector<Annulus>,
-            const std::vector<double> pivots,
-            const double radius
-    ) const;
-
     void search(
             std::shared_ptr<Node> node,
             std::vector<T> &inRange,
             const T &target,
             const double radius,
-            std::vector<double> &pivots
+            std::vector<double> &pivots,
+            int depth
     ) const;
 
 public:
@@ -88,7 +83,7 @@ std::vector<T> FasstTree<T, distance>::search(const T &target, double radius) co
 
     std::vector<double> pivots;
 
-    search(root, inRange, target, radius, pivots);
+    search(root, inRange, target, radius, pivots, 0);
     return inRange;
 }
 
@@ -158,15 +153,30 @@ FasstTree<T, distance>::build_tree(const node_itr low, const node_itr high, int 
 
 template<typename T, double (*distance)(const T &, const T &)>
 void FasstTree<T, distance>::search(std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target,
-                                    const double radius, std::vector<double> &pivots) const {
+                                    const double radius, std::vector<double> &pivots, int depth) const {
     if (node == nullptr) {
         return;
     }
 
     this->nodes_visited++;
 
-    const auto minDistance = TriangleUtils::maximize_minimum_triangle(node->pivots, pivots);
-    const auto maxDistance = TriangleUtils::minimize_maximum_triangle(node->pivots, pivots);
+    auto minDistance = 0.0;
+    auto maxDistance = TriangleUtils::infinity;
+    for (auto i = 0; i < depth; i++) {
+        if (node->pivots[i] == TriangleUtils::infinity) {
+            continue;
+        }
+        const auto minSide = std::fabs(node->pivots[i] - pivots[i]);
+        const auto maxSide = node->pivots[i] + pivots[i];
+
+        if (minDistance < minSide) {
+            minDistance = minSide;
+        }
+
+        if (maxSide < maxDistance) {
+            maxDistance = maxSide;
+        }
+    }
 
     if (radius <= minDistance || maxDistance <= radius) {
 
@@ -187,33 +197,47 @@ void FasstTree<T, distance>::search(std::shared_ptr<Node> node, std::vector<T> &
         }
     }
 
-    if (node->left && visit_node(node->left_annuli, pivots, radius)) {
-        search(node->left, inRange, target, radius, pivots);
+    if (node->left) {
+        bool goLeft = true;
+        for (auto i = 0; i < depth; i++) {
+            if (pivots[i] == TriangleUtils::infinity) {
+                continue;
+            }
+            if (pivots[i] < node->left_annuli[i].shortRadius && pivots[i] + radius < node->left_annuli[i].shortRadius) {
+                goLeft = false;
+                break;
+            } else if (node->left_annuli[i].longRadius < pivots[i] && pivots[i] - radius > node->left_annuli[i].longRadius) {
+                goLeft = false;
+                break;
+            }
+        }
+
+        if (goLeft) {
+            search(node->left, inRange, target, radius, pivots, depth + 1);
+        }
     }
 
-    if (node->right && visit_node(node->right_annuli, pivots, radius)) {
-        search(node->right, inRange, target, radius, pivots);
+    if (node->right) {
+        bool goRight = true;
+        for (auto i = 0; i < depth; i++) {
+            if (pivots[i] == TriangleUtils::infinity) {
+                continue;
+            }
+            if (pivots[i] < node->right_annuli[i].shortRadius && pivots[i] + radius < node->right_annuli[i].shortRadius) {
+                goRight = false;
+                break;
+            } else if (node->right_annuli[i].longRadius < pivots[i] && pivots[i] - radius > node->right_annuli[i].longRadius) {
+                goRight = false;
+                break;
+            }
+        }
+
+        if (goRight) {
+            search(node->right, inRange, target, radius, pivots, depth + 1);
+        }
     }
 
     pivots.pop_back();
-}
-
-template<typename T, double (*distance)(const T &, const T &)>
-bool FasstTree<T, distance>::visit_node(const typename std::vector<Annulus> annuli, const std::vector<double> pivots,
-                                        const double radius) const {
-
-    for (auto i = 0; i < annuli.size(); i++) {
-        if (pivots[i] == TriangleUtils::infinity) {
-            continue;
-        }
-        if (pivots[i] < annuli[i].shortRadius && pivots[i] + radius < annuli[i].shortRadius) {
-            return false;
-        } else if (annuli[i].longRadius < pivots[i] && pivots[i] - radius > annuli[i].longRadius) {
-            return false;
-        }
-    }
-
-    return true;
 }
 
 }
