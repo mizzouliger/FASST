@@ -6,240 +6,255 @@
 #define THESIS_FASSTTREE_HPP
 
 #include <queue>
-
-#include "ISearchTree.hpp"
-#include "TriangleUtils.hpp"
+#include "Range.hpp"
 
 namespace Thesis {
 
-template<typename T, double (*distance)(const T &, const T &)>
-class FasstTree : public ISearchTree<T, distance> {
+    namespace FasstBenchmark {
+        int distanceCalls = 0;
+        int nodesVisited  = 0;
+    }
 
-    struct Annulus {
-        double shortRadius;
-        double longRadius;
+    template<typename T, double (*distance)(const T &, const T &)>
+    class FasstTree {
 
-        Annulus(double shortRadius, double longRadius) : shortRadius(shortRadius), longRadius(longRadius) { }
+        struct Annulus {
+            double shortRadius;
+            double longRadius;
+
+            Annulus(double shortRadius, double longRadius) : shortRadius(shortRadius), longRadius(longRadius) { }
+        };
+
+        struct Node {
+            T point;
+
+            std::vector<Annulus> leftAnnuli;
+            std::vector<Annulus> rightAnnuli;
+
+            std::vector<double> pivots;
+
+            std::shared_ptr<Node> left;
+            std::shared_ptr<Node> right;
+
+            Node(T point) : point(point) { }
+
+            void search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange);
+            bool intersectsLeftAnnuli(std::vector<double> &pivots, double radius);
+            bool intersectsRightAnnuli(std::vector<double> &pivots, double radius);
+        };
+
+        using node_itr = typename std::vector<std::shared_ptr<typename FasstTree<T, distance>::Node>>::iterator;
+
+        std::shared_ptr<Node> root;
+
+        std::shared_ptr<Node> buildTree(const node_itr begin, const node_itr high, int depth) const;
+
+        static Range generateRange(std::vector<double> sideA, std::vector<double> sideB);
+
+    public:
+        FasstTree(std::vector<T> points);
+
+        std::vector<T> search(const T &target, const double radius) const;
+
+        int getCalls() const;
+
+        int getNodesVisited() const;
     };
 
-    struct Node {
-        T point;
+    template<typename T, double (*distance)(const T &, const T &)>
+    FasstTree<T, distance>::FasstTree(std::vector<T> points) {
+        std::vector<std::shared_ptr<Node>> nodes;
+        nodes.reserve(points.size());
 
-        std::vector<Annulus> left_annuli;
-        std::vector<Annulus> right_annuli;
+        for (auto &point : points) {
+            nodes.push_back(std::make_shared<Node>(point));
+        }
 
+        this->root = buildTree(nodes.begin(), nodes.end(), 0);
+    }
+
+    template<typename T, double (*distance)(const T &, const T &)>
+    std::vector<T> FasstTree<T, distance>::search(const T &target, double radius) const {
+        FasstBenchmark::distanceCalls = 0;
+        FasstBenchmark::nodesVisited  = 0;
+
+        std::vector<T> inRange;
         std::vector<double> pivots;
 
-        std::shared_ptr<Node> left;
-        std::shared_ptr<Node> right;
-
-        Node(T point) : point(point) { }
-    };
-
-    using node_itr = typename std::vector<std::shared_ptr<typename FasstTree<T, distance>::Node>>::iterator;
-
-    std::shared_ptr<Node> root;
-    mutable int calls;
-    mutable int nodes_visited;
-
-    std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high, int depth) const;
-
-    void search(
-            std::shared_ptr<Node> node,
-            std::vector<T> &inRange,
-            const T &target,
-            const double radius,
-            std::vector<double> &pivots,
-            int depth
-    ) const;
-
-public:
-    FasstTree(std::vector<T> points);
-
-    std::vector<T> search(const T &target, const double radius) const;
-
-    int getCalls() const;
-
-    int getNodesVisited() const;
-};
-
-template<typename T, double (*distance)(const T &, const T &)>
-FasstTree<T, distance>::FasstTree(std::vector<T> points) : calls(0) {
-    std::vector<std::shared_ptr<Node>> nodes;
-    nodes.reserve(points.size());
-
-    for (auto &point : points) {
-        nodes.push_back(std::make_shared<Node>(point));
+        if (this->root != nullptr) {
+            this->root->search(target, radius, pivots, inRange);
+        }
+        return inRange;
     }
 
-    this->root = build_tree(nodes.begin(), nodes.end(), 0);
-}
-
-template<typename T, double (*distance)(const T &, const T &)>
-std::vector<T> FasstTree<T, distance>::search(const T &target, double radius) const {
-    std::vector<T> inRange;
-    this->calls = 0;
-    this->nodes_visited = 0;
-
-    std::vector<double> pivots;
-
-    search(root, inRange, target, radius, pivots, 0);
-    return inRange;
-}
-
-template<typename T, double (*distance)(const T &, const T &)>
-int FasstTree<T, distance>::getCalls() const {
-    return this->calls;
-}
-
-template<typename T, double(*distance)(const T &, const T &)>
-int FasstTree<T, distance>::getNodesVisited() const {
-    return this->nodes_visited;
-}
-
-template<typename T, double (*distance)(const T &, const T &)>
-std::shared_ptr<typename FasstTree<T, distance>::Node>
-FasstTree<T, distance>::build_tree(const node_itr low, const node_itr high, int depth) const {
-    if (low == high) {
-        return nullptr;
+    template<typename T, double (*distance)(const T &, const T &)>
+    int FasstTree<T, distance>::getCalls() const {
+        return FasstBenchmark::distanceCalls;
     }
 
-    if ((high - low) == 1) {
-        return *low;
+    template<typename T, double(*distance)(const T &, const T &)>
+    int FasstTree<T, distance>::getNodesVisited() const {
+        return FasstBenchmark::nodesVisited;
     }
 
-    for (auto itr = low + 1; itr != high; itr++) {
-        auto dist = distance((*low)->point, (*itr)->point);
-        (*itr)->pivots.push_back(dist);
-    }
-
-    const auto median = low + (high - low) / 2;
-
-    std::nth_element(low + 1, median, high, [](const auto left, const auto right) {
-        return left->pivots.back() < right->pivots.back();
-    });
-
-    (*low)->left = build_tree(low + 1, median, depth + 1);
-    (*low)->right = build_tree(median, high, depth + 1);
-
-    for (auto i = 0; i < depth; i++) {
-
-        if ((*low)->left != nullptr) {
-            auto nearest = std::min_element(low + 1, median, [i](const auto left, const auto right) {
-                return left->pivots[i] < right->pivots[i];
-            });
-
-            auto furthest = std::max_element(low + 1, median, [i](const auto left, const auto right) {
-                return left->pivots[i] < right->pivots[i];
-            });
-
-            (*low)->left_annuli.push_back(Annulus((*nearest)->pivots[i], (*furthest)->pivots[i]));
+    template<typename T, double (*distance)(const T &, const T &)>
+    std::shared_ptr<typename FasstTree<T, distance>::Node>
+    FasstTree<T, distance>::buildTree(const node_itr begin, const node_itr end, int depth) const {
+        if (begin == end) {
+            return nullptr;
         }
 
-        if ((*low)->right != nullptr) {
-            auto nearest = std::min_element(median, high, [i](const auto left, const auto right) {
-                return left->pivots[i] < right->pivots[i];
-            });
-
-            auto furthest = std::max_element(median, high, [i](const auto left, const auto right) {
-                return left->pivots[i] < right->pivots[i];
-            });
-
-            (*low)->right_annuli.push_back(Annulus((*nearest)->pivots[i], (*furthest)->pivots[i]));
-        }
-    }
-    return (*low);
-}
-
-template<typename T, double (*distance)(const T &, const T &)>
-void FasstTree<T, distance>::search(std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target,
-                                    const double radius, std::vector<double> &pivots, int depth) const {
-    if (node == nullptr) {
-        return;
-    }
-
-    this->nodes_visited++;
-
-    auto minDistance = 0.0;
-    auto maxDistance = TriangleUtils::infinity;
-    for (auto i = 0; i < depth; i++) {
-        if (node->pivots[i] == TriangleUtils::infinity) {
-            continue;
-        }
-        const auto minSide = std::fabs(node->pivots[i] - pivots[i]);
-        const auto maxSide = node->pivots[i] + pivots[i];
-
-        if (minDistance < minSide) {
-            minDistance = minSide;
+        if ((end - begin) == 1) {
+            return *begin;
         }
 
-        if (maxSide < maxDistance) {
-            maxDistance = maxSide;
-        }
-    }
-
-    if (radius <= minDistance || maxDistance <= radius) {
-
-        if (maxDistance <= radius) {
-            inRange.push_back(node->point);
+        for (auto itr = begin + 1; itr != end; itr++) {
+            auto dist = distance((*begin)->point, (*itr)->point);
+            (*itr)->pivots.push_back(dist);
         }
 
-        pivots.push_back(TriangleUtils::infinity);
-    } else {
+        const auto median = begin + (end - begin) / 2;
 
-        const auto dist = distance(target, node->point);
-        this->calls++;
+        std::nth_element(begin + 1, median, end, [](const auto left, const auto right) {
+            return left->pivots.back() < right->pivots.back();
+        });
 
-        pivots.push_back(dist);
+        (*begin)->left = buildTree(begin + 1, median, depth + 1);
+        (*begin)->right = buildTree(median, end, depth + 1);
 
-        if (dist <= radius) {
-            inRange.push_back(node->point);
-        }
-    }
-
-    if (node->left) {
-        bool goLeft = true;
         for (auto i = 0; i < depth; i++) {
-            if (pivots[i] == TriangleUtils::infinity) {
+
+            if ((*begin)->left != nullptr) {
+                auto nearest = std::min_element(begin + 1, median, [i](const auto left, const auto right) {
+                    return left->pivots[i] < right->pivots[i];
+                });
+
+                auto furthest = std::max_element(begin + 1, median, [i](const auto left, const auto right) {
+                    return left->pivots[i] < right->pivots[i];
+                });
+
+                (*begin)->leftAnnuli.push_back(Annulus((*nearest)->pivots[i], (*furthest)->pivots[i]));
+            }
+
+            if ((*begin)->right != nullptr) {
+                auto nearest = std::min_element(median, end, [i](const auto left, const auto right) {
+                    return left->pivots[i] < right->pivots[i];
+                });
+
+                auto furthest = std::max_element(median, end, [i](const auto left, const auto right) {
+                    return left->pivots[i] < right->pivots[i];
+                });
+
+                (*begin)->rightAnnuli.push_back(Annulus((*nearest)->pivots[i], (*furthest)->pivots[i]));
+            }
+        }
+        return (*begin);
+    }
+
+    template<typename T, double(*distance)(const T&, const T&)>
+    Range FasstTree<T, distance>::generateRange(std::vector<double> sideA, std::vector<double> sideB) {
+        const auto infinity = std::numeric_limits<double>::max();
+
+        auto min = 0.0;
+        auto max = infinity;
+
+        for (auto i = 0; i < sideA.size(); i++) {
+            if (sideA[i] == infinity || sideB[i] == infinity) {
                 continue;
             }
-            if (pivots[i] < node->left_annuli[i].shortRadius && pivots[i] + radius < node->left_annuli[i].shortRadius) {
-                goLeft = false;
+            const auto minSide = std::fabs(sideA[i] - sideB[i]);
+            const auto maxSide = sideA[i] + sideB[i];
+
+            if (min < minSide) {
+                min = minSide;
+            }
+
+            if (maxSide < max) {
+                max = maxSide;
+            }
+        }
+        return Range(min, max);
+    }
+
+    template<typename T, double(*distance)(const T &, const T &)>
+    void FasstTree<T, distance>::Node::search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange) {
+
+        FasstBenchmark::nodesVisited++;
+
+        auto range = generateRange(this->pivots, pivots);
+        auto position = range.position(radius);
+
+        double dist;
+        switch (position) {
+            case Range::Greater:
+                inRange.push_back(this->point);
+                pivots.push_back(std::numeric_limits<double>::max());
                 break;
-            } else if (node->left_annuli[i].longRadius < pivots[i] && pivots[i] - radius > node->left_annuli[i].longRadius) {
-                goLeft = false;
+            case Range::Less:
+                pivots.push_back(std::numeric_limits<double>::max());
                 break;
+            case Range::Inside:
+                FasstBenchmark::distanceCalls++;
+                dist = distance(this->point, target);
+                if (dist <= radius) {
+                    inRange.push_back(this->point);
+                }
+                pivots.push_back(dist);
+                break;
+        }
+
+        if (this->left != nullptr) {
+            if (this->intersectsLeftAnnuli(pivots, radius)) {
+                this->left->search(target, radius, pivots, inRange);
             }
         }
 
-        if (goLeft) {
-            search(node->left, inRange, target, radius, pivots, depth + 1);
+        if (this->right != nullptr) {
+            if (this->intersectsRightAnnuli(pivots, radius)) {
+                this->right->search(target, radius, pivots, inRange);
+            }
         }
     }
 
-    if (node->right) {
-        bool goRight = true;
-        for (auto i = 0; i < depth; i++) {
-            if (pivots[i] == TriangleUtils::infinity) {
+    template<typename T, double(*distance)(const T&, const T&)>
+    bool FasstTree<T, distance>::Node::intersectsLeftAnnuli(std::vector<double> &pivots, double radius) {
+        for (auto i = 0; i < this->pivots.size(); i++) {
+            if (pivots[i] == std::numeric_limits<double>::max()) {
                 continue;
             }
-            if (pivots[i] < node->right_annuli[i].shortRadius && pivots[i] + radius < node->right_annuli[i].shortRadius) {
-                goRight = false;
-                break;
-            } else if (node->right_annuli[i].longRadius < pivots[i] && pivots[i] - radius > node->right_annuli[i].longRadius) {
-                goRight = false;
-                break;
+            if (pivots[i] < this->leftAnnuli[i].shortRadius) {
+                if (pivots[i] + radius < this->leftAnnuli[i].shortRadius) {
+                    return false;
+                }
+            } else if (pivots[i] - radius > this->leftAnnuli[i].longRadius) {
+                if (this->leftAnnuli[i].longRadius < pivots[i]) {
+                        return false;
+                }
             }
         }
 
-        if (goRight) {
-            search(node->right, inRange, target, radius, pivots, depth + 1);
-        }
+        return true;
     }
 
-    pivots.pop_back();
-}
+    template<typename T, double(*distance)(const T&, const T&)>
+    bool FasstTree<T, distance>::Node::intersectsRightAnnuli(std::vector<double> &pivots, double radius) {
+        for (auto i = 0; i < this->pivots.size(); i++) {
+            if (pivots[i] == std::numeric_limits<double>::max()) {
+                continue;
+            }
+            if (pivots[i] < this->rightAnnuli[i].shortRadius) {
+                if (pivots[i] + radius < this->rightAnnuli[i].shortRadius) {
+                    return false;
+                }
+            } else if (pivots[i] - radius > this->rightAnnuli[i].longRadius) {
+                if (this->rightAnnuli[i].longRadius < pivots[i]) {
+                    return false;
+                }
+            }
+        }
 
+        return true;
+    }
 }
 
 #endif

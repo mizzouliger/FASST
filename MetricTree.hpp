@@ -9,21 +9,13 @@
 #include <queue>
 #include <functional>
 
-#include "ISearchTree.hpp"
-
 namespace Thesis {
-
+    namespace MetricTreeBench {
+        int distanceCalls = 0;
+        int nodesVisited  = 0;
+    }
     template<typename T, double(*distance)(const T &, const T &)>
-    class MetricTree : public ISearchTree<T, distance> {
-    public:
-        MetricTree(std::vector<T> points);
-
-        std::vector<T> search(const T &target, double radius) const;
-
-        int getCalls() const;
-
-        int getNodesVisited() const;
-    private:
+    class MetricTree {
         struct Node {
             T point;
 
@@ -34,116 +26,111 @@ namespace Thesis {
             std::shared_ptr<Node> right;
 
             Node(T point) : point(point), innerRadius(0), outerRadius(0) { }
+
+            void search(const T& target, const double radius, std::vector<T> &inRange) const;
         };
 
         using node_itr = typename std::vector<std::shared_ptr<typename MetricTree<T, distance>::Node>>::iterator;
 
-        mutable int calls;
-        mutable int nodes_visited;
         std::shared_ptr<Node> root;
 
-        std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
+        std::shared_ptr<Node> buildTree(const node_itr begin, const node_itr high) const;
 
-        void search(
-                const std::shared_ptr<Node> node,
-                std::vector<T> &inRange,
-                const T &target,
-                const double radius
-        ) const;
+    public:
+        MetricTree(std::vector<T> points);
+
+        std::vector<T> search(const T &target, double radius) const;
+
+        int getCalls() const;
+
+        int getNodesVisited() const;
     };
 
     template<typename T, double(*distance)(const T &, const T &)>
-    MetricTree<T, distance>::MetricTree(std::vector<T> points) : calls(0), nodes_visited(0) {
+    MetricTree<T, distance>::MetricTree(std::vector<T> points) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
         for (auto &point : points) {
             nodes.push_back(std::make_shared<Node>(point));
         }
-        this->root = build_tree(nodes.begin(), nodes.end());
+        this->root = buildTree(nodes.begin(), nodes.end());
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
     int MetricTree<T, distance>::getCalls() const {
-        return this->calls;
+        return MetricTreeBench::distanceCalls;
     }
 
     template<typename T, double(*distance)(const T&, const T&)>
     int MetricTree<T, distance>::getNodesVisited() const {
-        return this->nodes_visited;
+        return MetricTreeBench::nodesVisited;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
     std::vector<T> MetricTree<T, distance>::search(const T &target, double radius) const {
-        std::vector<T> inRange;
-        this->calls = 0;
-        this->nodes_visited = 0;
+        MetricTreeBench::distanceCalls = 0;
+        MetricTreeBench::nodesVisited  = 0;
 
-        search(root, inRange, target, radius);
+        std::vector<T> inRange;
+        if (this->root != nullptr) {
+            this->root->search(target, radius, inRange);
+        }
         return inRange;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
     std::shared_ptr<typename MetricTree<T, distance>::Node>
-    MetricTree<T, distance>::build_tree(const node_itr low, const node_itr high) const {
-        if (low == high) {
+    MetricTree<T, distance>::buildTree(const node_itr begin, const node_itr end) const {
+        if (begin == end) {
             return nullptr;
         }
 
-        if ((high - low) == 1) {
-            return *low;
+        if ((end - begin) == 1) {
+            return *begin;
         }
 
-        for (auto itr = low + 1; itr != high; itr++) {
-            (*itr)->innerRadius = distance((*low)->point, (*itr)->point);
+        for (auto itr = begin + 1; itr != end; itr++) {
+            (*itr)->innerRadius = distance((*begin)->point, (*itr)->point);
         }
 
-        const auto median = low + (high - low) / 2;
+        const auto median = begin + (end - begin) / 2;
 
-        std::nth_element(low + 1, median, high, [](const auto n1, const auto n2) {
-            return n1->innerRadius < n2->innerRadius;
+        std::nth_element(begin + 1, median, end, [](const auto left, const auto right) {
+            return left->innerRadius < right->innerRadius;
         });
 
-        (*low)->outerRadius = (*median)->innerRadius;
+        (*begin)->outerRadius = (*median)->innerRadius;
 
-        const auto pointOnInnerRadius = std::max_element(low + 1, median, [](const auto n1, const auto n2) {
-            return n1->innerRadius < n2->innerRadius;
+        const auto pointOnInnerRadius = std::max_element(begin + 1, median, [](const auto left, const auto right) {
+            return left->innerRadius < right->innerRadius;
         });
 
-        (*low)->innerRadius = (*pointOnInnerRadius)->innerRadius;
+        (*begin)->innerRadius = (*pointOnInnerRadius)->innerRadius;
 
-        (*low)->left  = build_tree(low + 1, median);
-        (*low)->right = build_tree(median, high);
+        (*begin)->left  = buildTree(begin + 1, median);
+        (*begin)->right = buildTree(median, end);
 
-        return *low;
+        return *begin;
     }
 
-    template<typename T, double(*distance)(const T &, const T &)>
-    void MetricTree<T, distance>::search(
-            const std::shared_ptr<Node> node,
-            std::vector<T> &inRange,
-            const T &target,
-            const double radius
-    ) const {
-        if (node == nullptr) {
-            return;
-        }
+    template<typename T, double(*distance)(const T&, const T&)>
+    void MetricTree<T, distance>::Node::search(const T &target, const double radius, std::vector<T> &inRange) const {
+        MetricTreeBench::distanceCalls++;
+        MetricTreeBench::nodesVisited++;
 
-        this->nodes_visited++;
-
-        const auto dist = distance(node->point, target);
-        this->calls++;
+        const auto dist = distance(this->point, target);
 
         if (dist <= radius) {
-            inRange.push_back(node->point);
+            inRange.push_back(this->point);
         }
 
-        if (dist - radius <= node->innerRadius) {
-            search(node->left, inRange, target, radius);
+        if (this->left != nullptr && dist - radius <= this->innerRadius) {
+            this->left->search(target, radius, inRange);
         }
 
-        if (dist + radius >= node->outerRadius) {
-            search(node->right, inRange, target, radius);
+        if (this->right != nullptr && dist - radius <= this->outerRadius) {
+            this->right->search(target, radius, inRange);
         }
     }
 }
