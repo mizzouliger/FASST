@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <queue>
+#include <algorithm>
 #include <functional>
 
 #include "ISearchTree.hpp"
