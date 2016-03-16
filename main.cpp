@@ -218,7 +218,7 @@ double find_radius(std::vector<T> points, T target) {
     double radius = 10.0;
     auto result = tree.search(target, radius);
 
-    while (result.size() < 4 || result.size() > 6) {
+    for (auto i = 0; i < 10 && (result.size() < 5 || result.size() > 20); i++) {
         if (result.size() < 4) {
             radius = radius + (radius / 2);
         } else {
@@ -242,12 +242,16 @@ norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long
 
         double radius = find_radius<std::vector<double>, Metrics::norm2>(sample, target);
 
-       auto kdtree_future = std::async(std::launch::async, [&sample, &target, radius]() {
-            return bench<KdTree, std::vector<double>>(sample, target, radius);
+        auto kdtree_future = std::async(std::launch::async, [&sample, &target, radius]() {
+            return bench<KDTree, std::vector<double>>(sample, target, radius);
         });
 
         auto mtree_future = std::async(std::launch::async, [&sample, &target, radius]() {
             return bench<MetricTree<std::vector<double>, Metrics::norm2>, std::vector<double>>(sample, target, radius);
+        });
+
+        auto boundedtree_future = std::async(std::launch::async, [&sample, &target, radius]() {
+            return bench<BoundedTree<std::vector<double>, Metrics::norm2>, std::vector<double>>(sample, target, radius);
         });
 
         auto ftree_future = std::async(std::launch::async, [&sample, &target, radius]() {
@@ -264,12 +268,17 @@ norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long
 
         benchmark kdBench = {0, 0, 0, 0};
         std::tie(variable, kdBench) = kdtree_future.get();
-        verify_results<std::vector<double>, Metrics::norm2>(control, variable, target, radius);
+        //verify_results<std::vector<double>, Metrics::norm2>(control, variable, target, radius);
         results.push_back(kdBench);
+
+        benchmark boundedBench = {0, 0, 0, 0};
+        std::tie(variable, boundedBench) = boundedtree_future.get();
+        //verify_results<std::vector<double>, Metrics::norm2>(control, variable, target, radius);
+        results.push_back(boundedBench);
 
         benchmark fBench = {0, 0, 0, 0};
         std::tie(variable, fBench) = ftree_future.get();
-        verify_results<std::vector<double>, Metrics::norm2>(control, variable, target, radius);
+        //verify_results<std::vector<double>, Metrics::norm2>(control, variable, target, radius);
         results.push_back(fBench);
 
         finalResults.push_back(results);
@@ -280,32 +289,36 @@ norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long
 
 template<typename T, double(*distance)(const T&, const T&)>
 std::vector<std::vector<benchmark>>
-run_tests(std::vector<T> &point_set, T target, long step, long iterations, double itrRadius) {
+run_tests(std::vector<T> &points, T target, long step, long iterations) {
     const auto benchmarks = {
-            //bench<BoundedTree<T, distance>, T>,
+            bench<BoundedTree<T, distance>, T>,
             bench<FasstTree<T, distance>, T>
     };
+
+    auto maxRadius = 0.0;
+    for (auto& point : points) {
+        auto dist = distance(target, point);
+        if (dist > maxRadius) {
+            maxRadius = dist;
+        }
+    }
+
+    std::cout << "Max Radius: " << maxRadius << std::endl;
 
     std::vector<std::vector<benchmark>> final_results;
     final_results.reserve((unsigned long) (iterations + 1));
 
-    for (auto i = step; i <= iterations; i += step) {
-        display_progress_bar(static_cast<double>(i) / static_cast<double>(iterations));
+    double radius = 1;
+    for (auto i = step; i <= maxRadius; i += step) {
+        display_progress_bar(static_cast<double>(i) / maxRadius);
 
-        std::vector<T> points(point_set.begin(), itrRadius == 0.0 ? point_set.begin() + i : point_set.end());
         std::random_shuffle(points.begin(), points.end());
-
-        double radius;
-        if (itrRadius == 0.0) {
-            radius = find_radius<T, distance>(points, target);
-        } else {
-            radius = itrRadius;
-            itrRadius += 1;
-        }
 
         auto metric_tree_future = std::async(std::launch::async, [&points, &target, radius]() {
             return bench<MetricTree<T, distance>, T>(points, target, radius);
         });
+
+        radius += step;
 
         std::vector<decltype(metric_tree_future)> futures;
         futures.reserve(benchmarks.size());
@@ -324,7 +337,7 @@ run_tests(std::vector<T> &point_set, T target, long step, long iterations, doubl
             std::vector<T> variable;
             benchmark benchRes = {0, 0, 0, 0};
             std::tie(variable, benchRes) = future.get();
-            verify_results<T, distance>(control, variable, target, radius);
+            //verify_results<T, distance>(control, variable, target, radius);
             results.push_back(benchRes);
         }
 
@@ -405,20 +418,20 @@ int main(int argc, const char *argv[]) {
             case Metric::Edit: {
                 auto words = read_lines(indir + "/" + file);
                 auto target = "hello";
-                bench_set = run_tests<std::string, Metrics::editDistance>(words, target, step_size, iterations, 1);
+                bench_set = run_tests<std::string, Metrics::editDistance>(words, target, step_size, iterations);
             }
                 break;
 
             case Metric::Hamming:{
                 auto nums = read_ints(indir + "/" + file);
                 int target = 0;
-                bench_set = run_tests<int, Metrics::hammingDistance>(nums, target, step_size, iterations, 1);
+                bench_set = run_tests<int, Metrics::hammingDistance>(nums, target, step_size, iterations);
             }
                 break;
             case Metric::Blosum: {
                 auto sequences = get_sequences(100000);
                 auto target = sequences[0];
-                bench_set = run_tests<std::string, Metrics::blosum>(sequences, target, step_size, iterations, 1);
+                bench_set = run_tests<std::string, Metrics::blosum>(sequences, target, step_size, iterations);
             }
                 break;
         }

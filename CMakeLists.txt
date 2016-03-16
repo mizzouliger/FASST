@@ -15,6 +15,6 @@ set(SOURCE_FILES
         TriangleUtils.hpp TriangleUtils.cpp
         DistanceMetrics.cpp DistanceMetrics.hpp
         ezOptionParser.hpp
-        KdTree.cpp KdTree.hpp Range.cpp Range.hpp)
+        KdTree.hpp Range.cpp Range.hpp)
 
 add_executable(Thesis ${SOURCE_FILES})
