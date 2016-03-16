@@ -2,11 +2,10 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <future>
 #include <assert.h>
 #include <dirent.h>
-#include <future>
 
-#include "ISearchTree.hpp"
 #include "DistanceMetrics.hpp"
 #include "MetricTree.hpp"
 #include "BoundedTree.hpp"
@@ -231,7 +230,7 @@ double find_radius(std::vector<T> points, T target) {
     return radius;
 }
 
-std::vector<std::vector<benchmark>>
+std::vector<std::vector<benchmark>> 
 norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long step, long iterations) {
     std::vector<std::vector<benchmark>> finalResults;
     finalResults.reserve((unsigned long)iterations + 1);
@@ -290,18 +289,17 @@ norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long
 template<typename T, double(*distance)(const T&, const T&)>
 std::vector<std::vector<benchmark>>
 run_tests(std::vector<T> &points, T target, long step, long iterations) {
-    const auto benchmarks = {
-            bench<BoundedTree<T, distance>, T>,
-            bench<FasstTree<T, distance>, T>
-    };
-
-    auto maxRadius = 0.0;
+    auto maxRadius = 4661.0;
+    /*auto i = 1.0;
     for (auto& point : points) {
-        auto dist = distance(target, point);
+	display_progress_bar(i / static_cast<double>(points.size()));
+       	i += 1;
+    	auto dist = distance(target, point);
         if (dist > maxRadius) {
             maxRadius = dist;
+	    std::cout << maxRadius << std::endl;
         }
-    }
+    }*/
 
     std::cout << "Max Radius: " << maxRadius << std::endl;
 
@@ -320,26 +318,30 @@ run_tests(std::vector<T> &points, T target, long step, long iterations) {
 
         radius += step;
 
-        std::vector<decltype(metric_tree_future)> futures;
-        futures.reserve(benchmarks.size());
-        for (auto tree_bench : benchmarks) {
-            futures.push_back(std::async(std::launch::async, [tree_bench, &points, &target, radius]() {
-                return tree_bench(points, target, radius);
-            }));
-        }
+	auto boundedtree_future = std::async(std::launch::async, [&points, &target, radius]() {
+            return bench<BoundedTree<T, distance>, T>(points, target, radius);
+        });
+
+        auto ftree_future = std::async(std::launch::async, [&points, &target, radius]() {
+            return bench<MetricTree<T, distance>, T>(points, target, radius);
+        });
 
         std::vector<T> control;
+	std::vector<T> variable;
+
         benchmark metricBench = {0, 0, 0, 0};
         std::tie(control, metricBench) = metric_tree_future.get();
         std::vector<benchmark> results = {metricBench};
 
-        for (auto& future : futures) {
-            std::vector<T> variable;
-            benchmark benchRes = {0, 0, 0, 0};
-            std::tie(variable, benchRes) = future.get();
-            //verify_results<T, distance>(control, variable, target, radius);
-            results.push_back(benchRes);
-        }
+	benchmark boundedBench = {0, 0, 0, 0};
+        std::tie(variable, boundedBench) = boundedtree_future.get();
+        //verify_results<std::vector<double>, Metrics::norm2>(control, variable, target, radius);
+        results.push_back(boundedBench);
+
+        benchmark fBench = {0, 0, 0, 0};
+        std::tie(variable, fBench) = ftree_future.get();
+        //verify_results<std::vector<double>, Metrics::norm2>(control, variable, target, radius);
+        results.push_back(fBench);
 
         final_results.push_back(results);
     }
@@ -429,7 +431,9 @@ int main(int argc, const char *argv[]) {
             }
                 break;
             case Metric::Blosum: {
+		std::cout << "generating sequences" << std::endl;
                 auto sequences = get_sequences(100000);
+		std::cout << "sequences generated" << std::endl;
                 auto target = sequences[0];
                 bench_set = run_tests<std::string, Metrics::blosum>(sequences, target, step_size, iterations);
             }
