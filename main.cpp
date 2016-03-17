@@ -318,13 +318,18 @@ run_tests(std::vector<T> &points, T target, long step, long iterations) {
                 return bench<FasstTree<T, distance>, T>(points, target, i);
             });
 
-            benchmark metricBench = metric_tree_future.get();
+            std::vector<T> ignore;
+
+            benchmark metricBench = {0, 0, 0};
+            std::tie(ignore, metricBench) = metric_tree_future.get();
             std::vector<benchmark> results = {metricBench};
 
-            benchmark boundedBench = boundedtree_future.get();
+            benchmark boundedBench = {0, 0, 0};
+            std::tie(ignore, boundedBench) = boundedtree_future.get();
             results.push_back(boundedBench);
 
-            benchmark fBench = ftree_future.get();
+            benchmark fBench = {0, 0, 0};
+            std::tie(ignore, boundedBench) = ftree_future.get();
             results.push_back(fBench);
             return results;
         });
