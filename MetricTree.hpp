@@ -45,12 +45,7 @@ namespace Thesis {
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
 
-        void search(
-                const std::shared_ptr<Node> node,
-                std::vector<T> &inRange,
-                const T &target,
-                const double radius
-        ) const;
+        void search(const std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, const double radius) const;
     };
 
     template<typename T, double(*distance)(const T &, const T &)>
