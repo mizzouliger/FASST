@@ -288,13 +288,13 @@ norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long
 template<typename T, double(*distance)(const T&, const T&)>
 std::vector<std::vector<benchmark>>
 run_tests(std::vector<T> &points, T target, long step, long iterations) {
-    auto maxRadius = 3.0;
-   /* for (auto& point : points) {
+    auto maxRadius = 0.0;
+   	for (auto& point : points) {
     	auto dist = distance(target, point);
         if (dist > maxRadius) {
             maxRadius = dist;
         }
-    }*/
+    }
 
     std::cout << "Max Radius: " << maxRadius << std::endl;
 
@@ -328,8 +328,8 @@ run_tests(std::vector<T> &points, T target, long step, long iterations) {
             results.push_back(boundedBench);
 
             benchmark fBench = {0, 0, 0};
-            std::tie(ignore, boundedBench) = ftree_future.get();
-            results.push_back(fBench);
+            std::tie(ignore, fBench) = ftree_future.get();
+			results.push_back(fBench);
             return results;
         });
 
