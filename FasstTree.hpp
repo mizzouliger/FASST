@@ -33,8 +33,7 @@ namespace Thesis {
 
             Node(T point) : point(point) { }
 
-            void search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange, int &distanceCalls,
-                                    int &nodesVisited);
+            void search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange, int &distanceCalls, int &nodesVisited);
             bool intersectsLeftAnnuli(std::vector<double> &pivots, double radius);
             bool intersectsRightAnnuli(std::vector<double> &pivots, double radius);
         };
@@ -69,21 +68,23 @@ namespace Thesis {
         for (auto &point : points) {
             nodes.push_back(std::make_shared<Node>(point));
         }
-
-        this->root = buildTree(nodes.begin(), nodes.end(), 0);
+		
+		this->root = buildTree(nodes.begin(), nodes.end(), 0);
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
     std::vector<T> FasstTree<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         std::vector<double> pivots;
-
-        this->distanceCalls = 0;
-        this->nodesVisited = 0;
-
+		
+		int distanceCalls = 0;
+		int nodesVisited = 0;
         if (this->root != nullptr) {
-            this->root->search(target, radius, pivots, inRange, this->distanceCalls, this->nodesVisited);
+            this->root->search(target, radius, pivots, inRange, distanceCalls, nodesVisited);
         }
+
+		this->distanceCalls = distanceCalls;
+		this->nodesVisited = nodesVisited;
         return inRange;
     }
 
@@ -177,10 +178,8 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    void FasstTree<T, distance>::Node::search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange, int &distanceCalls,
-                                                  int &nodesVisited) {
-
-        nodesVisited++;
+    void FasstTree<T, distance>::Node::search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange, int &distanceCalls, int &nodesVisited) {
+        nodesVisited += 1;
 
         auto range = generateRange(this->pivots, pivots);
         auto position = range.position(radius);
@@ -189,13 +188,11 @@ namespace Thesis {
         switch (position) {
             case Range::Greater:
                 inRange.push_back(this->point);
-                pivots.push_back(std::numeric_limits<double>::max());
-                break;
             case Range::Less:
                 pivots.push_back(std::numeric_limits<double>::max());
                 break;
             case Range::Inside:
-                distanceCalls++;
+                distanceCalls += 1;
                 dist = distance(this->point, target);
                 if (dist <= radius) {
                     inRange.push_back(this->point);

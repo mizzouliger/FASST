@@ -96,14 +96,14 @@ namespace Thesis {
 
         const auto median = low + (high - low) / 2;
 
-        std::nth_element(low + 1, median, high, [](const auto n1, const auto n2) {
-            return n1->innerRadius < n2->innerRadius;
+        std::nth_element(low + 1, median, high, [](const auto left, const auto right) {
+            return left->innerRadius < right->innerRadius;
         });
 
         (*low)->outerRadius = (*median)->innerRadius;
 
-        const auto pointOnInnerRadius = std::max_element(low + 1, median, [](const auto n1, const auto n2) {
-            return n1->innerRadius < n2->innerRadius;
+        const auto pointOnInnerRadius = std::max_element(low + 1, median, [](const auto left, const auto right) {
+            return left->innerRadius < right->innerRadius;
         });
 
         (*low)->innerRadius = (*pointOnInnerRadius)->innerRadius;
@@ -115,12 +115,7 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    void MetricTree<T, distance>::search(
-            const std::shared_ptr<Node> node,
-            std::vector<T> &inRange,
-            const T &target,
-            const double radius
-    ) const {
+    void MetricTree<T, distance>::search(const std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, const double radius) const {
         if (node == nullptr) {
             return;
         }

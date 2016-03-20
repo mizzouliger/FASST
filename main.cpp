@@ -288,23 +288,22 @@ norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long
 template<typename T, double(*distance)(const T&, const T&)>
 std::vector<std::vector<benchmark>>
 run_tests(std::vector<T> &points, T target, long step, long iterations) {
-    auto maxRadius = 0.0;
-    for (auto& point : points) {
+    auto maxRadius = 3.0;
+   /* for (auto& point : points) {
     	auto dist = distance(target, point);
         if (dist > maxRadius) {
             maxRadius = dist;
         }
-    }
+    }*/
 
     std::cout << "Max Radius: " << maxRadius << std::endl;
 
     std::vector<std::vector<benchmark>> final_results;
-    final_results.reserve((unsigned long) (355 / 5));
 
     std::vector<std::future<std::vector<benchmark>>> futures;
     futures.reserve((unsigned long) iterations);
 
-    for (auto i = step; i <= step * iterations; i += step) {
+    for (auto i = step; i <= maxRadius; i += step) {
         auto iteration = std::async(std::launch::async, [&points, &target, i]() {
             auto metric_tree_future = std::async(std::launch::async, [&points, &target, i]() {
                 return bench<MetricTree<T, distance>, T>(points, target, i);
@@ -339,7 +338,7 @@ run_tests(std::vector<T> &points, T target, long step, long iterations) {
 
     auto i = step;
     for(auto& future : futures) {
-        display_progress_bar(i / (double)(step * iterations));
+        display_progress_bar(i / maxRadius);
         i += step;
         final_results.push_back(future.get());
     }
@@ -429,9 +428,7 @@ int main(int argc, const char *argv[]) {
             }
                 break;
             case Metric::Blosum: {
-		std::cout << "generating sequences" << std::endl;
                 auto sequences = get_sequences(100000);
-		std::cout << "sequences generated" << std::endl;
                 auto target = sequences[0];
                 bench_set = run_tests<std::string, Metrics::blosum>(sequences, target, step_size, iterations);
             }
@@ -440,7 +437,7 @@ int main(int argc, const char *argv[]) {
 
         int i = 1;
         for (auto& benchmarks : bench_set) {
-            const auto size = step_size * i++;
+			const auto size = step_size * i++;
             distance_file       << size << "\t";
             node_visited_file   << size << "\t";
             build_file          << size << "\t";
