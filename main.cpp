@@ -49,7 +49,7 @@ std::vector<std::string> get_files(std::string directory) {
         }
         closedir(dir);
     } else {
-        throw std::domain_error("Unable to open directory");
+        throw std::domain_error("Unable to open directory: " + directory);
     }
 
     return files;
@@ -67,6 +67,25 @@ std::vector<std::string> read_lines(std::string filename) {
 
     file.close();
     return words;
+}
+
+void display_progress_bar(double progress) {
+	int barWidth = 70;
+	
+	std::cout << "[";
+	int pos = static_cast<int>(barWidth * progress);
+	for (int i = 0; i < barWidth; ++i) {
+		if (i < pos) {
+			std::cout << "=";
+		} else if (i == pos) {
+			std::cout << ">";
+		} else {
+			std::cout << " ";
+		}
+	}
+
+	std::cout << "] " << int(progress * 100.0) << " %\r";
+	std::cout.flush();
 }
 
 template<typename T, double(*distance)(const T&, const T&)>
@@ -106,8 +125,10 @@ std::vector<std::vector<benchmark>> run_tests(std::vector<T> &points, T target) 
         futures.push_back(std::move(iteration));
     }
 
+	int i = 1; 
     for(auto& future : futures) {
-        final_results.push_back(future.get());
+        display_progress_bar((i++ * 5) / 71);
+		final_results.push_back(future.get());
     }
 
     return final_results;
@@ -124,9 +145,9 @@ std::string now() {
 
 int main(int argc, const char *argv[]) {
 
-    std::string indir;
-    std::string outdir;
-    std::string metricString;
+    std::string indir 		= argv[1];
+    std::string outdir 		= argv[2];
+    std::string metricString 	= argv[3];
 
     auto files = get_files(indir);
 
