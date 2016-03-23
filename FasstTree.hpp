@@ -10,11 +10,6 @@
 
 namespace Thesis {
 
-    namespace FasstBenchmark {
-        int distanceCalls = 0;
-        int nodesVisited  = 0;
-    }
-
     template<typename T, double (*distance)(const T &, const T &)>
     class FasstTree {
 
@@ -38,7 +33,7 @@ namespace Thesis {
 
             Node(T point) : point(point) { }
 
-            void search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange);
+            void search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange, int &distanceCalls, int &nodesVisited);
             bool intersectsLeftAnnuli(std::vector<double> &pivots, double radius);
             bool intersectsRightAnnuli(std::vector<double> &pivots, double radius);
         };
@@ -50,6 +45,10 @@ namespace Thesis {
         std::shared_ptr<Node> buildTree(const node_itr begin, const node_itr high, int depth) const;
 
         static Range generateRange(std::vector<double> sideA, std::vector<double> sideB);
+
+        mutable int distanceCalls;
+
+        mutable int nodesVisited;
 
     public:
         FasstTree(std::vector<T> points);
@@ -69,32 +68,34 @@ namespace Thesis {
         for (auto &point : points) {
             nodes.push_back(std::make_shared<Node>(point));
         }
-
-        this->root = buildTree(nodes.begin(), nodes.end(), 0);
+		
+		this->root = buildTree(nodes.begin(), nodes.end(), 0);
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
     std::vector<T> FasstTree<T, distance>::search(const T &target, double radius) const {
-        FasstBenchmark::distanceCalls = 0;
-        FasstBenchmark::nodesVisited  = 0;
-
         std::vector<T> inRange;
         std::vector<double> pivots;
-
+		
+		int distanceCalls = 0;
+		int nodesVisited = 0;
         if (this->root != nullptr) {
-            this->root->search(target, radius, pivots, inRange);
+            this->root->search(target, radius, pivots, inRange, distanceCalls, nodesVisited);
         }
+
+		this->distanceCalls = distanceCalls;
+		this->nodesVisited = nodesVisited;
         return inRange;
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
     int FasstTree<T, distance>::getCalls() const {
-        return FasstBenchmark::distanceCalls;
+        return this->distanceCalls;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
     int FasstTree<T, distance>::getNodesVisited() const {
-        return FasstBenchmark::nodesVisited;
+        return this->nodesVisited;
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
@@ -177,9 +178,8 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    void FasstTree<T, distance>::Node::search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange) {
-
-        FasstBenchmark::nodesVisited++;
+    void FasstTree<T, distance>::Node::search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange, int &distanceCalls, int &nodesVisited) {
+        nodesVisited += 1;
 
         auto range = generateRange(this->pivots, pivots);
         auto position = range.position(radius);
@@ -188,13 +188,11 @@ namespace Thesis {
         switch (position) {
             case Range::Greater:
                 inRange.push_back(this->point);
-                pivots.push_back(std::numeric_limits<double>::max());
-                break;
             case Range::Less:
                 pivots.push_back(std::numeric_limits<double>::max());
                 break;
             case Range::Inside:
-                FasstBenchmark::distanceCalls++;
+                distanceCalls += 1;
                 dist = distance(this->point, target);
                 if (dist <= radius) {
                     inRange.push_back(this->point);
@@ -205,13 +203,13 @@ namespace Thesis {
 
         if (this->left != nullptr) {
             if (this->intersectsLeftAnnuli(pivots, radius)) {
-                this->left->search(target, radius, pivots, inRange);
+                this->left->search(target, radius, pivots, inRange, distanceCalls, nodesVisited);
             }
         }
 
         if (this->right != nullptr) {
             if (this->intersectsRightAnnuli(pivots, radius)) {
-                this->right->search(target, radius, pivots, inRange);
+                this->right->search(target, radius, pivots, inRange, distanceCalls, nodesVisited);
             }
         }
     }
