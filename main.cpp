@@ -50,6 +50,7 @@ struct benchmark {
     double search_time;
 };
 
+
 template<typename T, typename U>
 std::pair<std::vector<U>, benchmark> bench(std::vector<U> points, const U target, const double radius) {
 
@@ -65,6 +66,21 @@ std::pair<std::vector<U>, benchmark> bench(std::vector<U> points, const U target
             tree->getCalls(),
             tree->getNodesVisited(),
             (end_build - start_build) / (double) (CLOCKS_PER_SEC / 1000),
+            (end_search - start_search) / (double) (CLOCKS_PER_SEC / 1000)
+    });
+}
+
+template<typename T, typename U>
+std::pair<std::vector<U>, benchmark> bench(T* tree, const U target, const double radius) {
+
+    const auto start_search = std::clock();
+    auto result = tree->search(target, radius);
+    const auto end_search = std::clock();
+
+    return std::make_pair(result, benchmark {
+            tree->getCalls(),
+            tree->getNodesVisited(),
+            0,
             (end_search - start_search) / (double) (CLOCKS_PER_SEC / 1000)
     });
 }
@@ -300,47 +316,40 @@ run_tests(std::vector<T> &points, T target, long step, long iterations) {
 
     std::vector<std::vector<benchmark>> final_results;
 
-    std::vector<std::future<std::vector<benchmark>>> futures;
-    futures.reserve((unsigned long) iterations);
+    MetricTree<T, distance>* metricTree      = new MetricTree<T, distance>(points);
+    BoundedTree<T, distance>* boundedTree    = new BoundedTree<T, distance>(points);
+    FasstTree<T, distance>* fasstTree        = new FasstTree<T, distance>(points);
 
     for (auto i = step; i <= maxRadius; i += step) {
-        auto iteration = std::async(std::launch::async, [&points, &target, i]() {
-            auto metric_tree_future = std::async(std::launch::async, [&points, &target, i]() {
-                return bench<MetricTree<T, distance>, T>(points, target, i);
-            });
+        display_progress_bar(i / maxRadius);
 
-            auto boundedtree_future = std::async(std::launch::async, [&points, &target, i]() {
-                return bench<BoundedTree<T, distance>, T>(points, target, i);
-            });
-
-            auto ftree_future = std::async(std::launch::async, [&points, &target, i]() {
-                return bench<FasstTree<T, distance>, T>(points, target, i);
-            });
-
-            std::vector<T> ignore;
-
-            benchmark metricBench = {0, 0, 0};
-            std::tie(ignore, metricBench) = metric_tree_future.get();
-            std::vector<benchmark> results = {metricBench};
-
-            benchmark boundedBench = {0, 0, 0};
-            std::tie(ignore, boundedBench) = boundedtree_future.get();
-            results.push_back(boundedBench);
-
-            benchmark fBench = {0, 0, 0};
-            std::tie(ignore, fBench) = ftree_future.get();
-			results.push_back(fBench);
-            return results;
+        auto metric_tree_future = std::async(std::launch::async, [metricTree, &target, i]() {
+            return bench<MetricTree<T, distance>, T>(metricTree, target, i);
         });
 
-        futures.push_back(std::move(iteration));
-    }
+        auto boundedtree_future = std::async(std::launch::async, [boundedTree, &target, i]() {
+            return bench<BoundedTree<T, distance>, T>(boundedTree, target, i);
+        });
 
-    auto i = step;
-    for(auto& future : futures) {
-        display_progress_bar(i / maxRadius);
-        i += step;
-        final_results.push_back(future.get());
+        auto ftree_future = std::async(std::launch::async, [fasstTree, &target, i]() {
+            return bench<FasstTree<T, distance>, T>(fasstTree, target, i);
+        });
+
+        std::vector<T> ignore;
+
+        benchmark metricBench = {0, 0, 0};
+        std::tie(ignore, metricBench) = metric_tree_future.get();
+        std::vector<benchmark> results = {metricBench};
+
+        benchmark boundedBench = {0, 0, 0};
+        std::tie(ignore, boundedBench) = boundedtree_future.get();
+        results.push_back(boundedBench);
+
+        benchmark fBench = {0, 0, 0};
+        std::tie(ignore, fBench) = ftree_future.get();
+        results.push_back(fBench);
+
+        final_results.push_back(results);
     }
 
     return final_results;
@@ -394,16 +403,16 @@ int main(int argc, const char *argv[]) {
         std::cout << "File " << file_count++ << " / " << files.size() << " : " << file << std::endl;
 
         std::ofstream distance_file;
-        distance_file.open(outdir + "/distance_calls/" + file);
+        distance_file.open(outdir + "/distance_calls/" + file + ".csv");
 
         std::ofstream node_visited_file;
-        node_visited_file.open(outdir + "/node_visited/" + file);
+        node_visited_file.open(outdir + "/node_visited/" + file + ".csv");
 
         std::ofstream build_file;
-        build_file.open(outdir + "/build_time/" + file);
+        build_file.open(outdir + "/build_time/" + file + ".csv");
 
         std::ofstream search_file;
-        search_file.open(outdir + "/search_time/" + file);
+        search_file.open(outdir + "/search_time/" + file + ".csv");
 
         std::vector<std::vector<benchmark>> bench_set;
         switch (stringToMetric(metricString)) {
@@ -435,19 +444,26 @@ int main(int argc, const char *argv[]) {
                 break;
         }
 
+        const auto header = "# Points,Metric Tree,Bounded-Tree,FassTree";
+
+        distance_file       << header << std::endl;
+        node_visited_file   << header << std::endl;
+        build_file          << header << std::endl;
+        search_file         << header << std::endl;
+
         int i = 1;
         for (auto& benchmarks : bench_set) {
 			const auto size = step_size * i++;
-            distance_file       << size << "\t";
-            node_visited_file   << size << "\t";
-            build_file          << size << "\t";
-            search_file         << size << "\t";
+            distance_file       << size << ",";
+            node_visited_file   << size << ",";
+            build_file          << size << ",";
+            search_file         << size << ",";
 
             for (auto& bench : benchmarks) {
-                distance_file       << bench.calls          << "\t";
-                node_visited_file   << bench.nodes_visited  << "\t";
-                build_file          << bench.build_time     << "\t";
-                search_file         << bench.search_time    << "\t";
+                distance_file       << bench.calls          << ",";
+                node_visited_file   << bench.nodes_visited  << ",";
+                build_file          << bench.build_time     << ",";
+                search_file         << bench.search_time    << ",";
             }
 
             distance_file       << std::endl;
