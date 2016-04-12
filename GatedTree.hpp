@@ -4,12 +4,11 @@
 #include <vector>
 #include <functional>
 
-#include "ISearchTree.hpp"
 #include "TriangleUtils.hpp"
 
 namespace Thesis {
     template<typename T, double(*distance)(const T &, const T &)>
-    class GatedTree : public ISearchTree<T, distance> {
+    class GatedTree {
         struct Node {
             T point;
 
