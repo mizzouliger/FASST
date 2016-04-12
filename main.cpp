@@ -8,8 +8,8 @@
 
 #include "DistanceMetrics.hpp"
 #include "MetricTree.hpp"
-#include "BoundedTree.hpp"
-#include "FasstTree.hpp"
+#include "FassT.hpp"
+#include "FassTGating.hpp"
 
 #include "ezOptionParser.hpp"
 #include "KdTree.hpp"
@@ -265,18 +265,17 @@ norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long
         });
 
         auto boundedtree_future = std::async(std::launch::async, [&sample, &target, radius]() {
-            return bench<BoundedTree<std::vector<double>, Metrics::norm2>, std::vector<double>>(sample, target, radius);
+            return bench<FassT<std::vector<double>, Metrics::norm2>, std::vector<double>>(sample, target, radius);
         });
 
         auto ftree_future = std::async(std::launch::async, [&sample, &target, radius]() {
-            return bench<FasstTree<std::vector<double>, Metrics::norm2>, std::vector<double>>(sample, target, radius);
+            return bench<FassTGating<std::vector<double>, Metrics::norm2>, std::vector<double>>(sample, target, radius);
         });
 
         std::vector<std::vector<double>> control;
         std::vector<std::vector<double>> variable;
 
         benchmark metricBench = {0, 0, 0, 0};
-
         std::tie(control, metricBench) = mtree_future.get();
         std::vector<benchmark> results = {metricBench};
 
@@ -316,9 +315,9 @@ run_tests(std::vector<T> &points, T target, long step, long iterations) {
 
     std::vector<std::vector<benchmark>> final_results;
 
-    MetricTree<T, distance>* metricTree      = new MetricTree<T, distance>(points);
-    BoundedTree<T, distance>* boundedTree    = new BoundedTree<T, distance>(points);
-    FasstTree<T, distance>* fasstTree        = new FasstTree<T, distance>(points);
+    MetricTree<T, distance>* metricTree   = new MetricTree<T, distance>(points);
+    FassT<T, distance>*fassT              = new FassT<T, distance>(points);
+    FassTGating<T, distance>* fassTGating = new FassTGating<T, distance>(points);
 
     for (auto i = step; i <= maxRadius; i += step) {
         display_progress_bar(i / maxRadius);
@@ -327,12 +326,12 @@ run_tests(std::vector<T> &points, T target, long step, long iterations) {
             return bench<MetricTree<T, distance>, T>(metricTree, target, i);
         });
 
-        auto boundedtree_future = std::async(std::launch::async, [boundedTree, &target, i]() {
-            return bench<BoundedTree<T, distance>, T>(boundedTree, target, i);
+        auto boundedtree_future = std::async(std::launch::async, [fassT, &target, i]() {
+            return bench<FassT<T, distance>, T>(fassT, target, i);
         });
 
-        auto ftree_future = std::async(std::launch::async, [fasstTree, &target, i]() {
-            return bench<FasstTree<T, distance>, T>(fasstTree, target, i);
+        auto ftree_future = std::async(std::launch::async, [fassTGating, &target, i]() {
+            return bench<FassTGating<T, distance>, T>(fassTGating, target, i);
         });
 
         std::vector<T> ignore;
@@ -415,7 +414,8 @@ int main(int argc, const char *argv[]) {
         search_file.open(outdir + "/search_time/" + file + ".csv");
 
         std::vector<std::vector<benchmark>> bench_set;
-        switch (stringToMetric(metricString)) {
+        auto metric = stringToMetric(metricString);
+        switch (metric) {
             case Metric::Norm2: {
                 auto points = read_points(indir + "/" + file);
                 auto origin = std::vector<double>(points[0].size(), 0.0);
@@ -444,7 +444,9 @@ int main(int argc, const char *argv[]) {
                 break;
         }
 
-        const auto header = "# Points,Metric Tree,Bounded-Tree,FassTree";
+        const auto header = metric == Metric::Norm2
+                            ? "#Points,Metric Tree,KD Tree,FassT,FassT w/ Gating,"
+                            : "Radius,Metric Tree,FassT,FassT w/ Gating,";
 
         distance_file       << header << std::endl;
         node_visited_file   << header << std::endl;

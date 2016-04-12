@@ -10,8 +10,13 @@
 
 namespace Thesis {
 
+    namespace FassTGatingBench {
+        int distanceCalls;
+        int nodesVisted;
+    };
+
     template<typename T, double (*distance)(const T &, const T &)>
-    class FasstTree {
+    class FassTGating {
 
         struct Annulus {
             double shortRadius;
@@ -33,25 +38,28 @@ namespace Thesis {
 
             Node(T point) : point(point) { }
 
-            void search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange, int &distanceCalls, int &nodesVisited);
-            bool intersectsLeftAnnuli(std::vector<double> &pivots, double radius);
-            bool intersectsRightAnnuli(std::vector<double> &pivots, double radius);
+            void collect(std::vector<T>& inRange);
+            void search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange);
+
+            bool collectLeft(std::vector<double>& pivots, double radius);
+            bool goLeft(std::vector<double> &pivots, double radius);
+
+            bool collectRight(std::vector<double>& pivots, double radius);
+            bool goRight(std::vector<double> &pivots, double radius);
         };
 
-        using node_itr = typename std::vector<std::shared_ptr<typename FasstTree<T, distance>::Node>>::iterator;
+        using node_itr = typename std::vector<std::shared_ptr<typename FassTGating<T, distance>::Node>>::iterator;
 
         std::shared_ptr<Node> root;
 
         std::shared_ptr<Node> buildTree(const node_itr begin, const node_itr high, int depth) const;
-
-        static Range generateRange(std::vector<double> sideA, std::vector<double> sideB);
 
         mutable int distanceCalls;
 
         mutable int nodesVisited;
 
     public:
-        FasstTree(std::vector<T> points);
+        FassTGating(std::vector<T> points);
 
         std::vector<T> search(const T &target, const double radius) const;
 
@@ -61,7 +69,7 @@ namespace Thesis {
     };
 
     template<typename T, double (*distance)(const T &, const T &)>
-    FasstTree<T, distance>::FasstTree(std::vector<T> points) {
+    FassTGating<T, distance>::FassTGating(std::vector<T> points) {
         std::vector<std::shared_ptr<Node>> nodes;
         nodes.reserve(points.size());
 
@@ -73,34 +81,32 @@ namespace Thesis {
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    std::vector<T> FasstTree<T, distance>::search(const T &target, double radius) const {
+    std::vector<T> FassTGating<T, distance>::search(const T &target, double radius) const {
         std::vector<T> inRange;
         std::vector<double> pivots;
 		
-		int distanceCalls = 0;
-		int nodesVisited = 0;
+		FassTGatingBench::distanceCalls = 0;
+        FassTGatingBench::nodesVisted = 0;
         if (this->root != nullptr) {
-            this->root->search(target, radius, pivots, inRange, distanceCalls, nodesVisited);
+            this->root->search(target, radius, pivots, inRange);
         }
 
-		this->distanceCalls = distanceCalls;
-		this->nodesVisited = nodesVisited;
         return inRange;
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    int FasstTree<T, distance>::getCalls() const {
-        return this->distanceCalls;
+    int FassTGating<T, distance>::getCalls() const {
+        return FassTGatingBench::distanceCalls;
     }
 
     template<typename T, double(*distance)(const T &, const T &)>
-    int FasstTree<T, distance>::getNodesVisited() const {
-        return this->nodesVisited;
+    int FassTGating<T, distance>::getNodesVisited() const {
+        return FassTGatingBench::nodesVisted;
     }
 
     template<typename T, double (*distance)(const T &, const T &)>
-    std::shared_ptr<typename FasstTree<T, distance>::Node>
-    FasstTree<T, distance>::buildTree(const node_itr begin, const node_itr end, int depth) const {
+    std::shared_ptr<typename FassTGating<T, distance>::Node>
+    FassTGating<T, distance>::buildTree(const node_itr begin, const node_itr end, int depth) const {
         if (begin == end) {
             return nullptr;
         }
@@ -134,7 +140,8 @@ namespace Thesis {
                     return left->pivots[i] < right->pivots[i];
                 });
 
-                (*begin)->leftAnnuli.push_back(Annulus((*nearest)->pivots[i], (*furthest)->pivots[i]));
+                const Annulus annulus((*nearest)->pivots[i], (*furthest)->pivots[i]);
+                (*begin)->leftAnnuli.push_back(annulus);
             }
 
             if ((*begin)->right != nullptr) {
@@ -151,71 +158,73 @@ namespace Thesis {
         }
         return (*begin);
     }
+    
+	template<typename T, double(*distance)(const T &, const T &)>
+    void FassTGating<T, distance>::Node::search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange) {
+        FassTGatingBench::nodesVisted++;
+
+		auto min = 0.0;
+		auto max = std::numeric_limits<double>::max();
+
+		for (auto i = 0; i < this->pivots.size(); i++) {
+			if (pivots[i] == std::numeric_limits<double>::max()) {
+				continue;
+			}
+
+			const auto minRange = std::fabs(this->pivots[i] - pivots[i]);
+			if (min < minRange) {
+				min = minRange;
+			}
+
+			const auto maxRange = this->pivots[i] + pivots[i];
+			if (maxRange < max) {
+				max = maxRange;
+			}
+		}
+
+		if (max <= radius) {
+			inRange.push_back(this->point);
+			pivots.push_back(std::numeric_limits<double>::max());
+		} else if (radius < min) {
+			pivots.push_back(std::numeric_limits<double>::max());
+		} else {
+            FassTGatingBench::distanceCalls++;
+			const auto dist = distance(target, this->point);
+			if (dist <= radius) {
+				inRange.push_back(this->point);
+			}
+
+			pivots.push_back(dist);
+		}
+
+        if (this->left != nullptr && this->collectLeft(pivots, radius)) {
+            this->left->collect(inRange);
+        } else if (this->left != nullptr && this->goLeft(pivots, radius)) {
+        	this->left->search(target, radius, pivots, inRange);
+        }
+
+        if (this->left != nullptr && this->collectRight(pivots, radius)) {
+            this->right->collect(inRange);
+        } else if (this->right != nullptr && this->goRight(pivots, radius)) {
+        	this->right->search(target, radius, pivots, inRange);
+        }
+    }
 
     template<typename T, double(*distance)(const T&, const T&)>
-    Range FasstTree<T, distance>::generateRange(std::vector<double> sideA, std::vector<double> sideB) {
-        const auto infinity = std::numeric_limits<double>::max();
-
-        auto min = 0.0;
-        auto max = infinity;
-
-        for (auto i = 0; i < sideA.size(); i++) {
-            if (sideA[i] == infinity || sideB[i] == infinity) {
+    bool FassTGating<T, distance>::Node::collectLeft(std::vector<double>& pivots, double radius) {
+        for (auto i = 0; i < this->leftAnnuli.size(); i++) {
+            if (pivots[i] == std::numeric_limits<double>::max()) {
                 continue;
             }
-            const auto minSide = std::fabs(sideA[i] - sideB[i]);
-            const auto maxSide = sideA[i] + sideB[i];
-
-            if (min < minSide) {
-                min = minSide;
-            }
-
-            if (maxSide < max) {
-                max = maxSide;
+            if (pivots[i] + this->leftAnnuli[i].longRadius <= radius) {
+                return true;
             }
         }
-        return Range(min, max);
-    }
-
-    template<typename T, double(*distance)(const T &, const T &)>
-    void FasstTree<T, distance>::Node::search(const T &target, double radius, std::vector<double> &pivots, std::vector<T> &inRange, int &distanceCalls, int &nodesVisited) {
-        nodesVisited += 1;
-
-        auto range = generateRange(this->pivots, pivots);
-        auto position = range.position(radius);
-
-        double dist;
-        switch (position) {
-            case Range::Greater:
-                inRange.push_back(this->point);
-            case Range::Less:
-                pivots.push_back(std::numeric_limits<double>::max());
-                break;
-            case Range::Inside:
-                distanceCalls += 1;
-                dist = distance(this->point, target);
-                if (dist <= radius) {
-                    inRange.push_back(this->point);
-                }
-                pivots.push_back(dist);
-                break;
-        }
-
-        if (this->left != nullptr) {
-            if (this->intersectsLeftAnnuli(pivots, radius)) {
-                this->left->search(target, radius, pivots, inRange, distanceCalls, nodesVisited);
-            }
-        }
-
-        if (this->right != nullptr) {
-            if (this->intersectsRightAnnuli(pivots, radius)) {
-                this->right->search(target, radius, pivots, inRange, distanceCalls, nodesVisited);
-            }
-        }
+        return false;
     }
 
     template<typename T, double(*distance)(const T&, const T&)>
-    bool FasstTree<T, distance>::Node::intersectsLeftAnnuli(std::vector<double> &pivots, double radius) {
+    bool FassTGating<T, distance>::Node::goLeft(std::vector<double> &pivots, double radius) {
         for (auto i = 0; i < this->pivots.size(); i++) {
             if (pivots[i] == std::numeric_limits<double>::max()) {
                 continue;
@@ -235,7 +244,21 @@ namespace Thesis {
     }
 
     template<typename T, double(*distance)(const T&, const T&)>
-    bool FasstTree<T, distance>::Node::intersectsRightAnnuli(std::vector<double> &pivots, double radius) {
+    bool FassTGating<T, distance>::Node::collectRight(std::vector<double>& pivots, double radius) {
+        for (auto i = 0; i < this->rightAnnuli.size(); i++) {
+            if (pivots[i] == std::numeric_limits<double>::max()) {
+                continue;
+            }
+
+            if (pivots[i] + this->rightAnnuli[i].longRadius <= radius) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    template<typename T, double(*distance)(const T&, const T&)>
+    bool FassTGating<T, distance>::Node::goRight(std::vector<double> &pivots, double radius) {
         for (auto i = 0; i < this->pivots.size(); i++) {
             if (pivots[i] == std::numeric_limits<double>::max()) {
                 continue;
@@ -252,6 +275,19 @@ namespace Thesis {
         }
 
         return true;
+    }
+
+    template<typename T, double(*distance)(const T&, const T&)>
+    void FassTGating<T, distance>::Node::collect(std::vector<T>& inRange) {
+        FassTGatingBench::nodesVisted++;
+        inRange.push_back(this->point);
+        if (this->left) {
+            this->left->collect(inRange);
+        }
+
+        if (this->right) {
+            this->right->collect(inRange);
+        }
     }
 }
 

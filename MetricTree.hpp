@@ -30,11 +30,12 @@ namespace Thesis {
 
             double innerRadius;
             double outerRadius;
+            double boundingRadius;
 
             std::shared_ptr<Node> left;
             std::shared_ptr<Node> right;
 
-            Node(T point) : point(point), innerRadius(0), outerRadius(0) { }
+            Node(T point) : point(point), innerRadius(0), outerRadius(0), boundingRadius(0) { }
         };
 
         using node_itr = typename std::vector<std::shared_ptr<typename MetricTree<T, distance>::Node>>::iterator;
@@ -44,6 +45,8 @@ namespace Thesis {
         std::shared_ptr<Node> root;
 
         std::shared_ptr<Node> build_tree(const node_itr low, const node_itr high) const;
+
+        void collect(const std::shared_ptr<Node> node, std::vector<T> &inRange) const;
 
         void search(const std::shared_ptr<Node> node, std::vector<T> &inRange, const T &target, const double radius) const;
     };
@@ -76,6 +79,7 @@ namespace Thesis {
         this->nodes_visited = 0;
 
         search(root, inRange, target, radius);
+
         return inRange;
     }
 
@@ -106,7 +110,12 @@ namespace Thesis {
             return left->innerRadius < right->innerRadius;
         });
 
-        (*low)->innerRadius = (*pointOnInnerRadius)->innerRadius;
+        const auto pointOnOuterBound = std::max_element(median, high, [](const auto left, const auto right) {
+            return left->innerRadius < right->innerRadius;
+        });
+
+        (*low)->innerRadius    = (*pointOnInnerRadius)->innerRadius;
+        (*low)->boundingRadius = (*pointOnOuterBound)->innerRadius;
 
         (*low)->left  = build_tree(low + 1, median);
         (*low)->right = build_tree(median, high);
@@ -129,12 +138,26 @@ namespace Thesis {
             inRange.push_back(node->point);
         }
 
-        if (dist - radius <= node->innerRadius) {
+        if (dist + node->innerRadius <= radius) {
+            collect(node->left, inRange);
+        } else if (dist - radius <= node->innerRadius) {
             search(node->left, inRange, target, radius);
         }
 
-        if (dist + radius >= node->outerRadius) {
+        if (dist + node->boundingRadius <= radius) {
+            collect(node->right, inRange);
+        } else if (dist + radius >= node->outerRadius) {
             search(node->right, inRange, target, radius);
+        }
+    }
+
+    template<typename T, double(*distance)(const T &, const T &)>
+    void MetricTree<T, distance>::collect(const std::shared_ptr<Node> node, std::vector<T>& inRange) const {
+        if (node != nullptr) {
+            this->nodes_visited++;
+            inRange.push_back(node->point);
+            collect(node->left, inRange);
+            collect(node->right, inRange);
         }
     }
 }

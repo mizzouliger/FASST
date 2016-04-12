@@ -263,7 +263,7 @@ private:
         double N = a.size();
         for (int i = 0; i < N; i++)
             d += (a[i] - b[i]) * (a[i] - b[i]);
-        return d;
+        return std::sqrt(d);
     }
 
 public:
@@ -317,7 +317,7 @@ public:
         KdTreeBench::nodesVisited = 0;
 
         // start from root at zero-th dimension
-        ball_bbox_query(ROOT, pmin, pmax, idxsInRange, distances, point, radius * radius, 0);
+        ball_bbox_query(ROOT, pmin, pmax, idxsInRange, distances, point, radius, 0);
     }
     /** @see ball_query, range_query
      *
@@ -327,14 +327,14 @@ public:
      */
 public:
     void ball_bbox_query(int nodeIdx, Point &pmin, Point &pmax, vector<int> &inrange_idxs, vector<double> &distances,
-                         const Point &point, const double &radiusSquared, int dim = 0) {
+                         const Point &point, const double &radius, int dim = 0) {
         KdTreeBench::nodesVisited++;
         Node *node = nodesPtrs[nodeIdx];
 
         // if it's a leaf and it lies in R
         if (node->isLeaf()) {
             double distance = distance_squared(points[node->pIdx], point);
-            if (distance <= radiusSquared) {
+            if (distance <= radius) {
                 inrange_idxs.push_back(node->pIdx);
                 distances.push_back(distance);
                 return;
@@ -342,10 +342,10 @@ public:
         }
         else {
             if (node->key >= pmin[dim] && node->LIdx != -1)
-                ball_bbox_query(node->LIdx, pmin, pmax, inrange_idxs, distances, point, radiusSquared,
+                ball_bbox_query(node->LIdx, pmin, pmax, inrange_idxs, distances, point, radius,
                                 (dim + 1) % ndim);
             if (node->key <= pmax[dim] && node->RIdx != -1)
-                ball_bbox_query(node->RIdx, pmin, pmax, inrange_idxs, distances, point, radiusSquared,
+                ball_bbox_query(node->RIdx, pmin, pmax, inrange_idxs, distances, point, radius,
                                 (dim + 1) % ndim);
         }
     }

@@ -10,8 +10,8 @@ set(SOURCE_FILES
         ControlTree.hpp
         MetricTree.hpp
         GatedTree.hpp
-        BoundedTree.hpp
-        FasstTree.hpp
+        FassT.hpp
+        FassTGating.hpp
         TriangleUtils.hpp TriangleUtils.cpp
         DistanceMetrics.cpp DistanceMetrics.hpp
         ezOptionParser.hpp
