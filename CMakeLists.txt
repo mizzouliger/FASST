@@ -8,12 +8,10 @@ set(SOURCE_FILES
         main.cpp
         ControlTree.hpp
         MetricTree.hpp
-        GatedTree.hpp
         FassT.hpp
         FassTGating.hpp
-        TriangleUtils.hpp TriangleUtils.cpp
         DistanceMetrics.cpp DistanceMetrics.hpp
         ezOptionParser.hpp
-        KdTree.hpp Range.cpp Range.hpp)
+        KdTree.hpp)
 
 add_executable(Thesis ${SOURCE_FILES})

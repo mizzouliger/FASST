@@ -302,7 +302,7 @@ norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long
 
 template<typename T, double(*distance)(const T&, const T&)>
 std::vector<std::vector<benchmark>>
-run_tests(std::vector<T> &points, T target, long step, long iterations) {
+run_tests(std::vector<T> &points, T target, long step) {
     auto maxRadius = 0.0;
    	for (auto& point : points) {
     	auto dist = distance(target, point);
@@ -350,6 +350,10 @@ run_tests(std::vector<T> &points, T target, long step, long iterations) {
 
         final_results.push_back(results);
     }
+
+    delete metricTree;
+    delete fassT;
+    delete fassTGating;
 
     return final_results;
 }
@@ -426,20 +430,20 @@ int main(int argc, const char *argv[]) {
             case Metric::Edit: {
                 auto words = read_lines(indir + "/" + file);
                 auto target = "hello";
-                bench_set = run_tests<std::string, Metrics::editDistance>(words, target, step_size, iterations);
+                bench_set = run_tests<std::string, Metrics::editDistance>(words, target, step_size);
             }
                 break;
 
             case Metric::Hamming:{
                 auto nums = read_ints(indir + "/" + file);
                 int target = 0;
-                bench_set = run_tests<int, Metrics::hammingDistance>(nums, target, step_size, iterations);
+                bench_set = run_tests<int, Metrics::hammingDistance>(nums, target, step_size);
             }
                 break;
             case Metric::Blosum: {
-                auto sequences = get_sequences(100000);
+                auto sequences = read_lines(indir + "/" + file);
                 auto target = sequences[0];
-                bench_set = run_tests<std::string, Metrics::blosum>(sequences, target, step_size, iterations);
+                bench_set = run_tests<std::string, Metrics::blosum>(sequences, target, step_size);
             }
                 break;
         }
