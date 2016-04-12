@@ -116,7 +116,14 @@ FassTGating<T, distance>::buildTree(const node_itr begin, const node_itr end) {
     (*begin)->left  = buildTree(begin + 1, median);
     (*begin)->right = buildTree(median, end);
 
-    for (auto i = 0; i < (*begin)->left->pivots.size(); i++) {
+    unsigned long depth = 0;
+    if ((*begin)->left != nullptr) {
+        depth = (*begin)->left->pivots.size();
+    } else if ((*begin)->right != nullptr) {
+        depth = (*begin)->right->pivots.size();
+    }
+
+    for (auto i = 0; i < depth; i++) {
         const auto cmp = [i](auto left, auto right) {
             return left->pivots[i] < right->pivots[i];
         };
