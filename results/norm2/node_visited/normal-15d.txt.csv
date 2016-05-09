@@ -1,4 +1,4 @@
-#Points,Metric Tree,KD Tree,FassT,FassT w/ Gating,
+#Points,Metric Tree,KD Tree,FaSST,FaSST w/ Gating,
 100,98,199,59,59,
 200,196,399,73,73,
 300,290,598,169,169,

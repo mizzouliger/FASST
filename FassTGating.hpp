@@ -83,7 +83,9 @@ template<typename T, double (*distance)(const T &, const T &)>
 std::vector<T> FassTGating<T, distance>::search(const T &target, double radius) {
     std::vector<T> result;
     std::vector<double> pivots;
-	
+
+    FassTGatingBench::distanceCalls = 0;
+    FassTGatingBench::nodesVisited  = 0;
     if (this->root != nullptr) {
         this->root->search(target, radius, pivots, result);
     }

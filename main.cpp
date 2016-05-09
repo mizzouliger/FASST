@@ -449,8 +449,8 @@ int main(int argc, const char *argv[]) {
         }
 
         const auto header = metric == Metric::Norm2
-                            ? "#Points,Metric Tree,KD Tree,FassT,FassT w/ Gating,"
-                            : "Radius,Metric Tree,FassT,FassT w/ Gating,";
+                            ? "#Points,Metric Tree,KD Tree,FaSST,FaSST w/ Gating,"
+                            : "Radius,Metric Tree,FaSST,FaSST w/ Gating,";
 
         distance_file       << header << std::endl;
         node_visited_file   << header << std::endl;
