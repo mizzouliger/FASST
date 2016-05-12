@@ -53,20 +53,36 @@ struct benchmark {
 
 template<typename T, typename U>
 std::pair<std::vector<U>, benchmark> bench(std::vector<U> points, const U target, const double radius) {
+    const auto iterations = 10;
+    std::vector<U> result;
+    int calls = 0;
+    int nodes = 0;
 
-    const auto start_build = std::clock();
-    std::unique_ptr<T> tree(new T(points));
-    const auto end_build = std::clock();
+    double buildTime = 0.0;
+    double searchTime = 0.0;
 
-    const auto start_search = std::clock();
-    auto result = tree->search(target, radius);
-    const auto end_search = std::clock();
+    for (auto i = 0; i < iterations; i++) {
+        std::random_shuffle(points.begin(), points.end());
+        const auto start_build = std::clock();
+        std::unique_ptr<T> tree(new T(points));
+        const auto end_build = std::clock();
+
+        const auto start_search = std::clock();
+        result = tree->search(target, radius);
+        const auto end_search = std::clock();
+
+        calls += tree->getCalls();
+        nodes += tree->getNodesVisited();
+
+        buildTime += (end_build - start_build) / (double) (CLOCKS_PER_SEC / 1000);
+        searchTime += (end_search - start_search) / (double) (CLOCKS_PER_SEC / 1000);
+    }
 
     return std::make_pair(result, benchmark {
-            tree->getCalls(),
-            tree->getNodesVisited(),
-            (end_build - start_build) / (double) (CLOCKS_PER_SEC / 1000),
-            (end_search - start_search) / (double) (CLOCKS_PER_SEC / 1000)
+            calls / iterations,
+            nodes / iterations,
+            buildTime / static_cast<double>(iterations),
+            searchTime / static_cast<double>(iterations)
     });
 }
 
@@ -207,22 +223,6 @@ std::vector<int> read_ints(std::string filename) {
 }
 
 template<typename T, double(*distance)(const T&, const T&)>
-void verify_results(std::vector<T> control, std::vector<T> variable, T target, double radius) {
-
-    assert(control.size() == variable.size());
-
-    for (auto &point : variable) {
-        const auto dist = distance(point, target);
-        assert(dist <= radius);
-    }
-
-    for (auto &point : control) {
-        const auto location = std::find(variable.begin(), variable.end(), point);
-        assert(location != variable.end());
-    }
-}
-
-template<typename T, double(*distance)(const T&, const T&)>
 double find_radius(std::vector<T> points, T target) {
     if (points.size() < 4) {
         return 10;
@@ -296,7 +296,7 @@ norm2(std::vector<std::vector<double>>& points, std::vector<double> target, long
 
         finalResults.push_back(results);
     }
-
+    display_progress_bar(100.0);
     return finalResults;
 }
 
@@ -315,23 +315,19 @@ run_tests(std::vector<T> &points, T target, long step) {
 
     std::vector<std::vector<benchmark>> final_results;
 
-    MetricTree<T, distance>* metricTree   = new MetricTree<T, distance>(points);
-    FassT<T, distance>*fassT              = new FassT<T, distance>(points);
-    FassTGating<T, distance>* fassTGating = new FassTGating<T, distance>(points);
-
     for (auto i = step; i <= maxRadius; i += step) {
         display_progress_bar(i / maxRadius);
 
-        auto metric_tree_future = std::async(std::launch::async, [metricTree, &target, i]() {
-            return bench<MetricTree<T, distance>, T>(metricTree, target, i);
+        auto metric_tree_future = std::async(std::launch::async, [points, &target, i]() {
+            return bench<MetricTree<T, distance>, T>(points, target, i);
         });
 
-        auto boundedtree_future = std::async(std::launch::async, [fassT, &target, i]() {
-            return bench<FassT<T, distance>, T>(fassT, target, i);
+        auto boundedtree_future = std::async(std::launch::async, [points, &target, i]() {
+            return bench<FassT<T, distance>, T>(points, target, i);
         });
 
-        auto ftree_future = std::async(std::launch::async, [fassTGating, &target, i]() {
-            return bench<FassTGating<T, distance>, T>(fassTGating, target, i);
+        auto ftree_future = std::async(std::launch::async, [points, &target, i]() {
+            return bench<FassTGating<T, distance>, T>(points, target, i);
         });
 
         std::vector<T> ignore;
@@ -350,11 +346,7 @@ run_tests(std::vector<T> &points, T target, long step) {
 
         final_results.push_back(results);
     }
-
-    delete metricTree;
-    delete fassT;
-    delete fassTGating;
-
+    display_progress_bar(100.0);
     return final_results;
 }
 
